@@ -12,6 +12,7 @@ export const Header = () => {
     <header className="w-full bg-white shadow-sm border-b border-gray-200">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center">
+          
           <h1 className="text-xl font-bold text-blue-800">Favo</h1>
         </div>
         <nav className="flex items-center space-x-6 text-sm">
@@ -27,7 +28,8 @@ export const Header = () => {
           </Link>
           <Link
             to="/mensajes"
-            className="text-blue-800 font-medium flex items-center gap-1"
+            //className="text-blue-800 font-medium flex items-center gap-1"
+            className="text-gray-500 hover:text-blue-800 flex items-center gap-1"
           >
             <MessageSquareIcon size={16} />
             <span>Mensajes</span>
