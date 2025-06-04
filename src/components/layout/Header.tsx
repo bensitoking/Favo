@@ -12,8 +12,9 @@ export const Header = () => {
     <header className="w-full bg-white shadow-sm border-b border-gray-200">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center">
-          
-          <h1 className="text-xl font-bold text-blue-800">Favo</h1>
+          <Link to="/login" className="text-xl font-bold text-blue-800">
+          <h1>Favo</h1>
+          </Link >
         </div>
         <nav className="flex items-center space-x-6 text-sm">
           <Link to="/" className="text-gray-500 hover:text-blue-800">

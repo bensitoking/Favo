@@ -5,6 +5,8 @@ import { Layout } from './components/layout/Layout'
 import { HelpPage } from './components/ayuda/HelpPage'
 import { HelpSection } from './components/ayuda/HelpSection'
 import { MyOrdersPage } from './components/pedidos/MyOrdersPage'
+import { ChatInterface } from './components/mensajes/ChatInterface'
+import { LoginPage } from './components/login/LoginPage'
 
 function App() {
   return (
@@ -13,10 +15,10 @@ function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
           <Route path="perfil" element={<ProfilePage />} />
-          <Route path="mensajes" element={<div>Mensajes</div>} />
+          <Route path="mensajes" element={<ChatInterface/>} />
           <Route path="pedidos" element={<MyOrdersPage/>} />
           <Route path="ayuda" element={<HelpPage/>} />
-          <Route path="*" element={<div>404 - Página no encontrada</div>} />
+          <Route path="login" element={<LoginPage/>} />
         </Route>
       </Routes>
     </Router>

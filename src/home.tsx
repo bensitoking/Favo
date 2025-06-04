@@ -2,7 +2,6 @@ import React from 'react'
 import { SearchBar } from './components/index/SearchBar'
 import { Categories } from './components/index/Categories'
 import { ServiceCard } from './components/index/ServiceCard'
-import { FloatingActionButton } from './components/index/FloatingActionButton'
 
 export default function Home() {
   const providers = [
@@ -60,7 +59,6 @@ export default function Home() {
           </div>
         </section>
       </main>
-      <FloatingActionButton />
     </div>
   )
 }
