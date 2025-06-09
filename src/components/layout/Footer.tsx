@@ -6,7 +6,7 @@ export const Footer = () => {
         <div>
           <h3 className="font-bold text-gray-800 mb-3">Favo</h3>
           <p className="text-sm text-gray-600 mb-2">
-            Conectando necesidades con soluciones desde 2023
+            Conectando necesidades con soluciones
           </p>
         </div>
         <div>

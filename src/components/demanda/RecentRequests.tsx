@@ -1,75 +1,59 @@
 import React from 'react';
 import { MapPinIcon } from 'lucide-react';
 export const RecentRequests = () => {
-  const requests = [{
+  const professionals = [{
     id: 1,
-    user: {
-      name: 'Laura M.',
-      location: 'Olivos',
-      image: 'https://randomuser.me/api/portraits/women/44.jpg'
-    },
-    title: 'Necesito profesor de matemáticas',
-    description: 'Busco profesor particular para clases de matemáticas para alumno de secundaria, 2 veces por semana.',
-    location: 'Palermo, Buenos Aires',
-    status: 'Abierto'
+    name: 'Sofia M.',
+    image: 'https://randomuser.me/api/portraits/women/44.jpg',
+    location: 'Olivos',
+    title: 'Desarrollador frontend',
+    description: 'Sólida experiencia en React. Me especializo en construir interfaces modernas, responsivas y escalables, priorizando la experiencia del usuario y el rendimiento.',
+    status: 'Disponible',
+    timeAgo: '2h'
   }, {
     id: 2,
-    user: {
-      name: 'Carlos G.',
-      location: 'Flores',
-      image: 'https://randomuser.me/api/portraits/men/32.jpg'
-    },
-    title: 'Plomero urgente',
-    description: 'Necesito plomero para reparar pérdida en caño de la cocina. Disponibilidad inmediata.',
-    location: 'Belgrano, Buenos Aires',
-    status: 'Abierto'
+    name: 'Damián A.',
+    image: 'https://randomuser.me/api/portraits/men/32.jpg',
+    location: 'Flores',
+    title: 'Soporte técnico',
+    description: 'Soy técnico especializado en redes y mantenimiento de equipos. Brindo soporte inmediato para fallos de conectividad y hardware.',
+    status: 'Disponible'
   }, {
     id: 3,
-    user: {
-      name: 'María S.',
-      location: 'Recoleta',
-      image: 'https://randomuser.me/api/portraits/women/68.jpg'
-    },
-    title: 'Diseñador gráfico para logo',
-    description: 'Busco diseñador para crear logo de emprendimiento de productos naturales.',
-    location: 'Trabajo remoto',
-    status: 'En proceso'
+    name: 'María S.',
+    image: 'https://randomuser.me/api/portraits/women/68.jpg',
+    location: 'Recoleta',
+    title: 'Diseñador UX/UI',
+    description: 'Soy diseñadora UX/UI con enfoque en usabilidad y accesibilidad. Diseño interfaces intuitivas para aplicaciones web y móviles.',
+    status: 'Disponible'
   }];
-  return <section className="py-8 px-4 bg-white">
-      <div className="container mx-auto">
-        <h2 className="text-xl font-bold text-gray-800 mb-6">
-          Pedidos Recientes
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {requests.map(request => <div key={request.id} className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
-              <div className="flex items-center mb-4">
-                <img src={request.user.image} alt={request.user.name} className="w-10 h-10 rounded-full mr-3" />
-                <div>
-                  <div className="font-medium text-gray-800">
-                    {request.user.name}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {request.user.location}
-                  </div>
-                </div>
-                <div className="ml-auto">
-                  <span className={`text-xs px-2 py-1 rounded-full ${request.status === 'Abierto' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
-                    {request.status}
-                  </span>
-                </div>
+  return <div className="space-y-4">
+      {professionals.map(professional => <div key={professional.id} className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center mb-4">
+            <img src={professional.image} alt={professional.name} className="w-12 h-12 rounded-full border-2 border-gray-100" />
+            <div className="ml-3">
+              <div className="font-semibold text-gray-800">
+                {professional.name}
               </div>
-              <h3 className="font-medium text-gray-800 mb-2">
-                {request.title}
-              </h3>
-              <p className="text-sm text-gray-600 mb-3">
-                {request.description}
-              </p>
-              <div className="flex items-center text-xs text-gray-500">
-                <MapPinIcon size={14} className="mr-1" />
-                {request.location}
+              <div className="text-xs text-gray-500 flex items-center">
+                <MapPinIcon size={12} className="mr-1" />
+                {professional.location}{' '}
+                {professional.timeAgo && `• ${professional.timeAgo}`}
               </div>
-            </div>)}
-        </div>
-      </div>
-    </section>;
+            </div>
+            <span className="ml-auto text-xs px-3 py-1 rounded-full bg-green-100 text-green-800">
+              {professional.status}
+            </span>
+          </div>
+          <h3 className="font-medium text-gray-800 mb-2">
+            {professional.title}
+          </h3>
+          <p className="text-gray-600 mb-4">{professional.description}</p>
+          <div className="flex justify-end">
+            <button className="bg-[#1a365d] text-white px-4 py-2 rounded-md hover:bg-[#234781] transition-colors">
+              Contactar
+            </button>
+          </div>
+        </div>)}
+    </div>;
 };

@@ -46,10 +46,6 @@ export function MyOrdersPage() {
       <main className="max-w-4xl mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-2xl font-bold text-gray-800">Mis Pedidos</h1>
-          <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-            <PlusCircleIcon size={20} />
-            <span>Nuevo Pedido</span>
-          </button>
         </div>
         <OrderTabs activeTab={activeTab} onTabChange={setActiveTab} />
         <div className="space-y-4 mt-6">
