@@ -1,4 +1,3 @@
-// src/components/RecentRequests.jsx
 import React, { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 import { MapPinIcon } from 'lucide-react'
@@ -28,7 +27,7 @@ export const RecentRequests = () => {
     return
   }
 
-  console.log('Datos recibidos de Supabase:', data) // 👈 Agregá esto
+  console.log('Datos recibidos de Supabase:', data) 
 
   const formatted = data.map((s) => ({
     id:           s.id_servicios,
