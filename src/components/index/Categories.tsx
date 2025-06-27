@@ -4,22 +4,22 @@ export const Categories = () => {
   const categories = [{
     icon: <LaptopIcon size={32} className="text-[#1a365d]" />,
     name: 'Tecnología',
-    count: '234 servicios',
+    count: '234 pedidos',
     color: 'bg-blue-50'
   }, {
     icon: <WrenchIcon size={32} className="text-orange-500" />,
     name: 'Hogar',
-    count: '186 servicios',
+    count: '186 pedidos',
     color: 'bg-orange-50'
   }, {
     icon: <GraduationCapIcon size={32} className="text-[#1a365d]" />,
     name: 'Educación',
-    count: '158 servicios',
+    count: '158 pedidos',
     color: 'bg-blue-50'
   }, {
     icon: <HeartIcon size={32} className="text-orange-500" />,
     name: 'Salud',
-    count: '142 servicios',
+    count: '142 pedidos',
     color: 'bg-orange-50'
   }];
   return <section className="py-12 px-4 bg-gray-50">

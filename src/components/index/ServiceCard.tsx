@@ -20,10 +20,7 @@ export const ServiceCard = ({
       </div>
       <p className="text-gray-600 text-sm mt-3">{provider.description}</p>
       <div className="mt-4 flex justify-between items-center">
-        <span className="text-[#1a365d] font-medium">
-          ${provider.price}/hora
-        </span>
-        <button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md text-sm transition-colors">
+        <button className="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-md text-sm transition-colors">
           Contactar
         </button>
       </div>
