@@ -163,7 +163,7 @@ export const LoginPage = () => {
               Conectamos necesidades con soluciones
             </h2>
             <p className="text-lg text-blue-100">
-              Miles de profesionales verificados listos para ayudarte con
+              Miles de personas confiables listas para ayudarte con
               cualquier servicio que necesites
             </p>
           </div>

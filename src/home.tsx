@@ -11,7 +11,6 @@ export default function Home() {
       location: 'Olivos',
       image: 'https://randomuser.me/api/portraits/women/44.jpg',
       description: 'Profesora de matemáticas con 5 años de experiencia',
-      price: 20
     },
     {
       name: 'Carlos G.',
@@ -19,7 +18,6 @@ export default function Home() {
       location: 'Flores',
       image: 'https://randomuser.me/api/portraits/men/32.jpg',
       description: 'Plomero profesional, servicios de emergencia 24/7',
-      price: 20
     },
     {
       name: 'María S.',
@@ -27,7 +25,6 @@ export default function Home() {
       location: 'Recoleta',
       image: 'https://randomuser.me/api/portraits/women/68.jpg',
       description: 'Diseñadora gráfica especializada en branding',
-      price: 20
     },
   ]
 
