@@ -104,25 +104,6 @@ export const LoginPage = () => {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin
-        }
-      });
-
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error al iniciar sesión con Google:', error);
-      setErrors({
-        ...errors,
-        general: error.message || 'Error al iniciar sesión con Google'
-      });
-    }
-  };
-
   return (
     <div className="flex min-h-[calc(100vh-64px)]">
       {/* Left side - Login Form */}
@@ -146,8 +127,7 @@ export const LoginPage = () => {
 
           <div className="bg-white rounded-xl shadow-lg p-8">
             <button 
-              type="button" 
-              onClick={handleGoogleLogin}
+              type="button"
               className="w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors duration-200 mb-6"
             >
               <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google logo" className="w-5 h-5" />
