@@ -42,7 +42,7 @@ export const SearchBar = () => {
         )}
         <button 
           type="submit"
-          className={`bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full mr-1 transition-all hover:shadow-md ${!searchTerm.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full mr-1 transition-all hover:shadow-md }`}
         >
           Buscar
         </button>
