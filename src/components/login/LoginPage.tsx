@@ -51,60 +51,53 @@ export const LoginPage = () => {
     setErrors({ ...errors, general: '' });
 
     try {
-      // 1. Autenticación con Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (authError) throw authError;
-
-      // 2. Obtener datos adicionales de tu tabla Usuario
-      const { data: usuario, error: userError } = await supabase
+      // 1. Buscar usuario en la tabla Usuario
+      const { data: user, error: queryError } = await supabase
         .from('Usuario')
         .select('*')
-        .eq('mail', email)
+        .eq('mail', email.trim())
         .single();
 
-      if (userError) throw userError;
-
-      // 3. Verificar si el usuario está verificado
-      if (!usuario.verificado) {
-        throw new Error('Tu cuenta no ha sido verificada. Por favor revisa tu correo.');
+      if (queryError?.code === '42501') {
+        throw new Error('Error de permisos. Contacta al administrador.');
       }
 
-      // 4. Combinar datos de autenticación con datos del usuario
-      const fullSession = {
-        ...authData.session,
+      if (queryError || !user) {
+        throw new Error('Usuario no encontrado');
+      }
+
+      // 2. Validar contraseña (comparación directa)
+      if (user.password !== password.trim()) {
+        throw new Error('Contraseña incorrecta');
+      }
+
+      // 3. Crear objeto de sesión manual
+      const sessionData = {
         user: {
-          ...authData.session?.user,
-          user_metadata: {
-            ...authData.session?.user.user_metadata,
-            ...usuario
-          }
-        }
+          id: user.id_usuario,
+          email: user.mail,
+          nombre: user.nombre,
+          esProveedor: user.esProveedor,
+          esDemanda: user.esDemanda,
+          foto_perfil: user.foto_perfil
+        },
+        access_token: 'manual-token', // Simulamos un token
+        expires_at: Math.floor(Date.now() / 1000) + 3600 // Expira en 1 hora
       };
 
-      // 5. Guardar sesión según "Recordarme"
+      // 4. Guardar sesión según "Recordarme"
       if (rememberMe) {
-        localStorage.setItem('supabaseSession', JSON.stringify(fullSession));
+        localStorage.setItem('supabaseSession', JSON.stringify(sessionData));
       } else {
-        sessionStorage.setItem('supabaseSession', JSON.stringify(fullSession));
+        sessionStorage.setItem('supabaseSession', JSON.stringify(sessionData));
       }
-
-      // 6. Redirigir según el tipo de usuario
-      if (usuario.esProvedor) {
-        navigate('/demanda');
-      }  
-      else {
-        navigate('/');
-      }
+      navigate('/');
+      
 
     } catch (error) {
-      console.error('Error al iniciar sesión:', error);
       setErrors({
         ...errors,
-        general: error.message || 'Credenciales incorrectas o usuario no encontrado'
+        general: error.message || 'Error al iniciar sesión'
       });
     } finally {
       setLoading(false);
@@ -132,7 +125,7 @@ export const LoginPage = () => {
 
   return (
     <div className="flex min-h-[calc(100vh-64px)]">
-
+      {/* Left side - Login Form */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
@@ -152,7 +145,6 @@ export const LoginPage = () => {
           )}
 
           <div className="bg-white rounded-xl shadow-lg p-8">
-
             <button 
               type="button" 
               onClick={handleGoogleLogin}
@@ -174,7 +166,6 @@ export const LoginPage = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                   Correo electrónico
@@ -231,7 +222,6 @@ export const LoginPage = () => {
                 )}
               </div>
 
-              {/* Remember me & Forgot password */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <input 
@@ -250,7 +240,6 @@ export const LoginPage = () => {
                 </a>
               </div>
 
-              {/* Submit button */}
               <button 
                 type="submit" 
                 disabled={loading}
@@ -260,7 +249,6 @@ export const LoginPage = () => {
               </button>
             </form>
 
-            {/* Sign up link */}
             <p className="mt-8 text-center text-sm text-gray-600">
               ¿No tenés una cuenta?{' '}
               <a href="/registro" className="font-medium text-blue-800 hover:text-blue-900 transition-colors duration-200">
@@ -269,7 +257,6 @@ export const LoginPage = () => {
             </p>
           </div>
 
-          {/* Trust indicators */}
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-500">
               Al iniciar sesión, aceptás nuestros{' '}
@@ -285,7 +272,6 @@ export const LoginPage = () => {
         </div>
       </div>
 
-      {/* Right side - Image */}
       <div className="hidden lg:block lg:w-1/2 bg-blue-800">
         <div className="h-full flex items-center justify-center p-12">
           <div className="max-w-lg text-center text-white">
