@@ -1,19 +1,28 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MailIcon, LockIcon, AlertCircleIcon } from 'lucide-react';
+import { supabase } from '../demanda/supabaseClient';
+
 export const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState({
     email: '',
-    password: ''
+    password: '',
+    general: ''
   });
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
   const validateForm = () => {
     const newErrors = {
       email: '',
-      password: ''
+      password: '',
+      general: ''
     };
     let isValid = true;
+
     if (!email) {
       newErrors.email = 'El correo electrónico es requerido';
       isValid = false;
@@ -21,6 +30,7 @@ export const LoginPage = () => {
       newErrors.email = 'El correo electrónico no es válido';
       isValid = false;
     }
+
     if (!password) {
       newErrors.password = 'La contraseña es requerida';
       isValid = false;
@@ -28,21 +38,101 @@ export const LoginPage = () => {
       newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
       isValid = false;
     }
+
     setErrors(newErrors);
     return isValid;
   };
-  const handleSubmit = e => {
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (validateForm()) {
-      console.log('Login submitted:', {
+    if (!validateForm()) return;
+
+    setLoading(true);
+    setErrors({ ...errors, general: '' });
+
+    try {
+      // 1. Autenticación con Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
-        password,
-        rememberMe
+        password
+      });
+
+      if (authError) throw authError;
+
+      // 2. Obtener datos adicionales de tu tabla Usuario
+      const { data: usuario, error: userError } = await supabase
+        .from('Usuario')
+        .select('*')
+        .eq('mail', email)
+        .single();
+
+      if (userError) throw userError;
+
+      // 3. Verificar si el usuario está verificado
+      if (!usuario.verificado) {
+        throw new Error('Tu cuenta no ha sido verificada. Por favor revisa tu correo.');
+      }
+
+      // 4. Combinar datos de autenticación con datos del usuario
+      const fullSession = {
+        ...authData.session,
+        user: {
+          ...authData.session?.user,
+          user_metadata: {
+            ...authData.session?.user.user_metadata,
+            ...usuario
+          }
+        }
+      };
+
+      // 5. Guardar sesión según "Recordarme"
+      if (rememberMe) {
+        localStorage.setItem('supabaseSession', JSON.stringify(fullSession));
+      } else {
+        sessionStorage.setItem('supabaseSession', JSON.stringify(fullSession));
+      }
+
+      // 6. Redirigir según el tipo de usuario
+      if (usuario.esProvedor) {
+        navigate('/demanda');
+      }  
+      else {
+        navigate('/');
+      }
+
+    } catch (error) {
+      console.error('Error al iniciar sesión:', error);
+      setErrors({
+        ...errors,
+        general: error.message || 'Credenciales incorrectas o usuario no encontrado'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error al iniciar sesión con Google:', error);
+      setErrors({
+        ...errors,
+        general: error.message || 'Error al iniciar sesión con Google'
       });
     }
   };
-  return <div className="flex min-h-[calc(100vh-64px)]">
-      {/* Left side - Login Form */}
+
+  return (
+    <div className="flex min-h-[calc(100vh-64px)]">
+
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
@@ -53,13 +143,25 @@ export const LoginPage = () => {
               La plataforma líder de servicios profesionales en Argentina
             </p>
           </div>
+          
+          {errors.general && (
+            <div className="mb-4 p-3 bg-red-100 text-red-800 rounded-lg flex items-center gap-2">
+              <AlertCircleIcon size={20} />
+              <span>{errors.general}</span>
+            </div>
+          )}
+
           <div className="bg-white rounded-xl shadow-lg p-8">
-            {/* Google Sign In Button */}
-            <button type="button" className="w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors duration-200 mb-6">
+
+            <button 
+              type="button" 
+              onClick={handleGoogleLogin}
+              className="w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors duration-200 mb-6"
+            >
               <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google logo" className="w-5 h-5" />
               <span>Continuar con Google</span>
             </button>
-            {/* Divider */}
+
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-200"></div>
@@ -70,8 +172,9 @@ export const LoginPage = () => {
                 </span>
               </div>
             </div>
+
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Email input */}
+
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                   Correo electrónico
@@ -80,20 +183,26 @@ export const LoginPage = () => {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <MailIcon size={20} className="text-gray-400" />
                   </div>
-                  <input id="email" type="email" value={email} onChange={e => {
-                  setEmail(e.target.value);
-                  if (errors.email) setErrors({
-                    ...errors,
-                    email: ''
-                  });
-                }} className={`block w-full pl-10 pr-3 py-2.5 border ${errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent transition-colors duration-200`} placeholder="nombre@ejemplo.com" />
+                  <input 
+                    id="email" 
+                    type="email" 
+                    value={email} 
+                    onChange={e => {
+                      setEmail(e.target.value);
+                      if (errors.email) setErrors({ ...errors, email: '' });
+                    }} 
+                    className={`block w-full pl-10 pr-3 py-2.5 border ${errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent transition-colors duration-200`} 
+                    placeholder="nombre@ejemplo.com" 
+                  />
                 </div>
-                {errors.email && <div className="mt-1 flex items-center gap-1 text-sm text-red-600">
+                {errors.email && (
+                  <div className="mt-1 flex items-center gap-1 text-sm text-red-600">
                     <AlertCircleIcon size={16} />
                     <span>{errors.email}</span>
-                  </div>}
+                  </div>
+                )}
               </div>
-              {/* Password input */}
+
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                   Contraseña
@@ -102,23 +211,36 @@ export const LoginPage = () => {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <LockIcon size={20} className="text-gray-400" />
                   </div>
-                  <input id="password" type="password" value={password} onChange={e => {
-                  setPassword(e.target.value);
-                  if (errors.password) setErrors({
-                    ...errors,
-                    password: ''
-                  });
-                }} className={`block w-full pl-10 pr-3 py-2.5 border ${errors.password ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent transition-colors duration-200`} placeholder="••••••••" />
+                  <input 
+                    id="password" 
+                    type="password" 
+                    value={password} 
+                    onChange={e => {
+                      setPassword(e.target.value);
+                      if (errors.password) setErrors({ ...errors, password: '' });
+                    }} 
+                    className={`block w-full pl-10 pr-3 py-2.5 border ${errors.password ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent transition-colors duration-200`} 
+                    placeholder="••••••••" 
+                  />
                 </div>
-                {errors.password && <div className="mt-1 flex items-center gap-1 text-sm text-red-600">
+                {errors.password && (
+                  <div className="mt-1 flex items-center gap-1 text-sm text-red-600">
                     <AlertCircleIcon size={16} />
                     <span>{errors.password}</span>
-                  </div>}
+                  </div>
+                )}
               </div>
+
               {/* Remember me & Forgot password */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <input id="remember-me" type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="h-4 w-4 text-blue-800 focus:ring-blue-800 border-gray-300 rounded transition-colors duration-200" />
+                  <input 
+                    id="remember-me" 
+                    type="checkbox" 
+                    checked={rememberMe} 
+                    onChange={e => setRememberMe(e.target.checked)} 
+                    className="h-4 w-4 text-blue-800 focus:ring-blue-800 border-gray-300 rounded transition-colors duration-200" 
+                  />
                   <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
                     Recordarme
                   </label>
@@ -127,19 +249,26 @@ export const LoginPage = () => {
                   ¿Olvidaste tu contraseña?
                 </a>
               </div>
+
               {/* Submit button */}
-              <button type="submit" className="w-full bg-blue-800 text-white py-2.5 px-4 rounded-lg hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-800 focus:ring-offset-2 transition-colors duration-200 font-medium">
-                Iniciar sesión
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="w-full bg-blue-800 text-white py-2.5 px-4 rounded-lg hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-800 focus:ring-offset-2 transition-colors duration-200 font-medium disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
               </button>
             </form>
+
             {/* Sign up link */}
             <p className="mt-8 text-center text-sm text-gray-600">
               ¿No tenés una cuenta?{' '}
-              <a href="#" className="font-medium text-blue-800 hover:text-blue-900 transition-colors duration-200">
+              <a href="/registro" className="font-medium text-blue-800 hover:text-blue-900 transition-colors duration-200">
                 Registrate ahora
               </a>
             </p>
           </div>
+
           {/* Trust indicators */}
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-500">
@@ -155,6 +284,7 @@ export const LoginPage = () => {
           </div>
         </div>
       </div>
+
       {/* Right side - Image */}
       <div className="hidden lg:block lg:w-1/2 bg-blue-800">
         <div className="h-full flex items-center justify-center p-12">
@@ -169,5 +299,6 @@ export const LoginPage = () => {
           </div>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
