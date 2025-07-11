@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MailIcon, LockIcon, AlertCircleIcon } from 'lucide-react';
-//import { supabase } from '../demanda/supabaseClient';
+
+const API_URL =  'http://localhost:8000';
 
 export const LoginPage = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
   const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState({
     email: '',
@@ -23,18 +26,18 @@ export const LoginPage = () => {
     };
     let isValid = true;
 
-    if (!email) {
+    if (!formData.email) {
       newErrors.email = 'El correo electrónico es requerido';
       isValid = false;
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'El correo electrónico no es válido';
       isValid = false;
     }
 
-    if (!password) {
+    if (!formData.password) {
       newErrors.password = 'La contraseña es requerida';
       isValid = false;
-    } else if (password.length < 6) {
+    } else if (formData.password.length < 6) {
       newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
       isValid = false;
     }
@@ -43,8 +46,68 @@ export const LoginPage = () => {
     return isValid;
   };
 
-  const handleSubmit = async (e) => {
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
   };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setLoading(true);
+    setErrors(prev => ({ ...prev, general: '' }));
+
+    try {
+      const response = await fetch(`${API_URL}/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          username: formData.email,
+          password: formData.password
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Credenciales inválidas');
+      }
+
+      const { access_token } = await response.json();
+      
+      // Store token based on remember me choice
+      if (rememberMe) {
+        localStorage.setItem('access_token', access_token);
+      } else {
+        sessionStorage.setItem('access_token', access_token);
+      }
+
+      // Redirect to dashboard or intended page
+      navigate('/');
+    } catch (error) {
+      console.error('Login error:', error);
+      setErrors(prev => ({
+        ...prev,
+        general: error.message || 'Error al iniciar sesión'
+      }));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex min-h-[calc(100vh-64px)]">
       {/* Left side - Login Form */}
@@ -67,25 +130,6 @@ export const LoginPage = () => {
           )}
 
           <div className="bg-white rounded-xl shadow-lg p-8">
-            <button 
-              type="button"
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors duration-200 mb-6"
-            >
-              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google logo" className="w-5 h-5" />
-              <span>Continuar con Google</span>
-            </button>
-
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-gray-500">
-                  o ingresá con tu email
-                </span>
-              </div>
-            </div>
-
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
@@ -96,15 +140,16 @@ export const LoginPage = () => {
                     <MailIcon size={20} className="text-gray-400" />
                   </div>
                   <input 
-                    id="email" 
+                    id="email"
+                    name="email"
                     type="email" 
-                    value={email} 
-                    onChange={e => {
-                      setEmail(e.target.value);
-                      if (errors.email) setErrors({ ...errors, email: '' });
-                    }} 
-                    className={`block w-full pl-10 pr-3 py-2.5 border ${errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent transition-colors duration-200`} 
-                    placeholder="nombre@ejemplo.com" 
+                    value={formData.email}
+                    onChange={handleChange}
+                    className={`block w-full pl-10 pr-3 py-2.5 border ${
+                      errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent transition-colors duration-200`} 
+                    placeholder="nombre@ejemplo.com"
+                    disabled={loading}
                   />
                 </div>
                 {errors.email && (
@@ -124,15 +169,16 @@ export const LoginPage = () => {
                     <LockIcon size={20} className="text-gray-400" />
                   </div>
                   <input 
-                    id="password" 
+                    id="password"
+                    name="password"
                     type="password" 
-                    value={password} 
-                    onChange={e => {
-                      setPassword(e.target.value);
-                      if (errors.password) setErrors({ ...errors, password: '' });
-                    }} 
-                    className={`block w-full pl-10 pr-3 py-2.5 border ${errors.password ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent transition-colors duration-200`} 
-                    placeholder="••••••••" 
+                    value={formData.password}
+                    onChange={handleChange}
+                    className={`block w-full pl-10 pr-3 py-2.5 border ${
+                      errors.password ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent transition-colors duration-200`} 
+                    placeholder="••••••••"
+                    disabled={loading}
                   />
                 </div>
                 {errors.password && (
@@ -149,14 +195,18 @@ export const LoginPage = () => {
                     id="remember-me" 
                     type="checkbox" 
                     checked={rememberMe} 
-                    onChange={e => setRememberMe(e.target.checked)} 
-                    className="h-4 w-4 text-blue-800 focus:ring-blue-800 border-gray-300 rounded transition-colors duration-200" 
+                    onChange={(e) => setRememberMe(e.target.checked)} 
+                    className="h-4 w-4 text-blue-800 focus:ring-blue-800 border-gray-300 rounded transition-colors duration-200"
+                    disabled={loading}
                   />
                   <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
                     Recordarme
                   </label>
                 </div>
-                <a href="#" className="text-sm text-blue-800 hover:text-blue-900 transition-colors duration-200">
+                <a 
+                  href="/forgot-password" 
+                  className="text-sm text-blue-800 hover:text-blue-900 transition-colors duration-200"
+                >
                   ¿Olvidaste tu contraseña?
                 </a>
               </div>
@@ -164,15 +214,26 @@ export const LoginPage = () => {
               <button 
                 type="submit" 
                 disabled={loading}
-                className="w-full bg-blue-800 text-white py-2.5 px-4 rounded-lg hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-800 focus:ring-offset-2 transition-colors duration-200 font-medium disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full flex justify-center items-center bg-blue-800 text-white py-2.5 px-4 rounded-lg hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-800 focus:ring-offset-2 transition-colors duration-200 font-medium disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
+                {loading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Iniciando sesión...
+                  </>
+                ) : 'Iniciar sesión'}
               </button>
             </form>
 
             <p className="mt-8 text-center text-sm text-gray-600">
               ¿No tenés una cuenta?{' '}
-              <a href="/registro" className="font-medium text-blue-800 hover:text-blue-900 transition-colors duration-200">
+              <a 
+                href="/register" 
+                className="font-medium text-blue-800 hover:text-blue-900 transition-colors duration-200"
+              >
                 Registrate ahora
               </a>
             </p>
@@ -181,11 +242,11 @@ export const LoginPage = () => {
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-500">
               Al iniciar sesión, aceptás nuestros{' '}
-              <a href="#" className="text-blue-800 hover:text-blue-900">
+              <a href="/terms" className="text-blue-800 hover:text-blue-900">
                 términos y condiciones
               </a>{' '}
               y{' '}
-              <a href="#" className="text-blue-800 hover:text-blue-900">
+              <a href="/privacy" className="text-blue-800 hover:text-blue-900">
                 política de privacidad
               </a>
             </p>
@@ -193,6 +254,7 @@ export const LoginPage = () => {
         </div>
       </div>
 
+      {/* Right side - Marketing Content */}
       <div className="hidden lg:block lg:w-1/2 bg-blue-800">
         <div className="h-full flex items-center justify-center p-12">
           <div className="max-w-lg text-center text-white">

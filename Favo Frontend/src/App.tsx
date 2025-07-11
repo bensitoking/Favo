@@ -10,6 +10,7 @@ import { LoginPage } from './components/login/LoginPage'
 import { RecentRequests } from './components/demanda/RecentRequests'
 import { TrendingColumn } from './components/demanda/TrendingColumn'
 import { Servicios } from './components/demanda/Servicios'
+import { RegisterPage } from './components/login/RegisterPage'
 
 function App() {
   return (
@@ -21,8 +22,9 @@ function App() {
           <Route path="mensajes" element={<ChatInterface/>} />
           <Route path="pedidos" element={<MyOrdersPage/>} />
           <Route path="ayuda" element={<HelpPage/>} />
-          <Route path="login" element={<LoginPage/>} />
           <Route path="demanda" element={<Servicios/>} />
+           <Route path="login" element={<LoginPage />} />
+          <Route path="register" element={<RegisterPage />} />
         </Route>
       </Routes>
     </Router>
