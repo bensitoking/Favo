@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MailIcon, LockIcon, AlertCircleIcon } from 'lucide-react';
-import { supabase } from '../demanda/supabaseClient';
+//import { supabase } from '../demanda/supabaseClient';
 
 export const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -44,66 +44,7 @@ export const LoginPage = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-
-    setLoading(true);
-    setErrors({ ...errors, general: '' });
-
-    try {
-      // 1. Buscar usuario en la tabla Usuario
-      const { data: user, error: queryError } = await supabase
-        .from('Usuario')
-        .select('*')
-        .eq('mail', email.trim())
-        .single();
-
-      if (queryError?.code === '42501') {
-        throw new Error('Error de permisos. Contacta al administrador.');
-      }
-
-      if (queryError || !user) {
-        throw new Error('Usuario no encontrado');
-      }
-
-      // 2. Validar contraseña (comparación directa)
-      if (user.password !== password.trim()) {
-        throw new Error('Contraseña incorrecta');
-      }
-
-      // 3. Crear objeto de sesión manual
-      const sessionData = {
-        user: {
-          id: user.id_usuario,
-          email: user.mail,
-          nombre: user.nombre,
-          esProveedor: user.esProveedor,
-          esDemanda: user.esDemanda,
-          foto_perfil: user.foto_perfil
-        },
-        access_token: 'manual-token', // Simulamos un token
-        expires_at: Math.floor(Date.now() / 1000) + 3600 // Expira en 1 hora
-      };
-
-      // 4. Guardar sesión según "Recordarme"
-      if (rememberMe) {
-        localStorage.setItem('supabaseSession', JSON.stringify(sessionData));
-      } else {
-        sessionStorage.setItem('supabaseSession', JSON.stringify(sessionData));
-      }
-      navigate('/');
-      
-
-    } catch (error) {
-      setErrors({
-        ...errors,
-        general: error.message || 'Error al iniciar sesión'
-      });
-    } finally {
-      setLoading(false);
-    }
   };
-
   return (
     <div className="flex min-h-[calc(100vh-64px)]">
       {/* Left side - Login Form */}

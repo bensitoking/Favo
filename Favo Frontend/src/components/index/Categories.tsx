@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronRightIcon, LaptopIcon } from 'lucide-react';
-import { supabase } from '../demanda/supabaseClient'; // Asegúrate de que la ruta es correcta
+import { ChevronRightIcon } from 'lucide-react';
+
+const API_URL = "http://localhost:8000";
 
 export const Categories = () => {
   const [categories, setCategories] = useState([]);
@@ -11,28 +12,21 @@ export const Categories = () => {
     const fetchCategories = async () => {
       try {
         setLoading(true);
-
-        const { data: categoriesData, error: categoriesError } = await supabase
-          .from('Categoria')
-          .select('id_categoria, nombre');  
         
-        if (categoriesError) throw categoriesError;
-        const { data: countsData, error: countsError } = await supabase
-          .from('Pedido')
-          .select('id_categoria');
+        const response = await fetch(`${API_URL}/categorias`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
         
-        if (countsError) throw countsError;
-
-        const enrichedCategories = categoriesData.map(category => {
-          const countData = countsData.find(c => c.id_categoria === category.id_categoria);
-          return {
-            id: category.id_categoria,
-            name: category.nombre,
-            count: countData ? `${countData.count} pedidos` : '0 pedidos',
-            color: getCategoryColor(category.id_categoria)
-          };
-        });
-
+        const data = await response.json();
+        
+        const enrichedCategories = data.map(category => ({
+          id: category.id_categoria,
+          name: category.nombre,
+          count: `${category.count} pedidos`,
+          color: getCategoryColor(category.id_categoria)
+        }));
+        
         setCategories(enrichedCategories);
       } catch (error) {
         console.error('Error fetching categories:', error);
@@ -95,7 +89,8 @@ export const Categories = () => {
           {categories.map((category) => (
             <div 
               key={category.id}
-              className={`${category.color} rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group`}>
+              className={`${category.color} rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group`}
+            >
               <div className="flex flex-col items-center text-center">
                 <h3 className="text-lg font-semibold text-gray-800 mb-2 group-hover:text-blue-600 transition-colors">
                   {category.name}
