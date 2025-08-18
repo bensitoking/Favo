@@ -53,7 +53,6 @@ export const LoginPage = () => {
       [name]: value
     }));
 
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -88,14 +87,12 @@ export const LoginPage = () => {
 
       const { access_token } = await response.json();
       
-      // Store token based on remember me choice
       if (rememberMe) {
         localStorage.setItem('access_token', access_token);
       } else {
         sessionStorage.setItem('access_token', access_token);
       }
 
-      // Redirect to dashboard or intended page
       navigate('/');
     } catch (error) {
       console.error('Login error:', error);
