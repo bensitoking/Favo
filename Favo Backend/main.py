@@ -43,7 +43,7 @@ async def get_recent_requests():
     try:
         response = supabase.from_("Servicio").select(
             """
-            id_servicios,
+            id_servicio,
             titulo,
             descripcion,
             Usuario (
@@ -55,13 +55,13 @@ async def get_recent_requests():
             """
         ).limit(10).execute()
 
-        if response.error:
-            raise HTTPException(status_code=400, detail=response.error.message)
+        if getattr(response, "error", None):
+            raise HTTPException(status_code=400, detail=str(getattr(response.error, "message", response.error)))
 
         formatted = []
         for item in response.data:
             formatted.append({
-                "id": item["id_servicios"],
+                "id": item["id_servicio"],
                 "name": item["Usuario"].get("nombre", "Desconocido"),
                 "location": item["Usuario"].get("Ubicacion", {}).get("barrio_zona", "Sin ubicación"),
                 "title": item["titulo"],
@@ -109,7 +109,7 @@ async def create_servicio(servicio: ServicioBase):
     try:
         response = supabase.from_("Servicio").insert(servicio.dict()).execute()
         
-        if response.error:
+        if getattr(response, "error", None):
             raise HTTPException(status_code=400, detail=str(response.error))
         
         if not response.data:
@@ -153,7 +153,7 @@ async def get_categorias():
 async def get_simple_categorias():
     try:
         response = supabase.from_("Categoria").select("id_categoria, nombre").execute()
-        if response.error:
+        if getattr(response, "error", None):
             raise HTTPException(status_code=400, detail=str(response.error))
         return response.data
     except Exception as e:
