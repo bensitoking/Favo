@@ -41,29 +41,46 @@ class RecentRequest(BaseModel):
 @app.get("/recent-requests", response_model=list[RecentRequest])
 async def get_recent_requests():
     try:
-        response = supabase.from_("Servicio").select(
-            """
-            id_servicio,
-            titulo,
-            descripcion,
-            Usuario (
-                nombre,
-                Ubicacion (
-                    barrio_zona
-                )
-            )
-            """
-        ).limit(10).execute()
+
+        # Solo traer servicios cuyo id_usuario existe en Usuario
+        servicios_response = supabase.from_("Servicio").select("*" ).limit(20).execute()
+        usuarios_response = supabase.from_("Usuario").select("id_usuario, nombre, id_ubicacion").execute()
+        ubicaciones_response = supabase.from_("Ubicacion").select("id_ubicacion, barrio_zona").execute()
+
+        usuarios_map = {u["id_usuario"]: u for u in usuarios_response.data}
+        ubicaciones_map = {u["id_ubicacion"]: u for u in ubicaciones_response.data}
+
+        formatted = []
+        for item in servicios_response.data:
+            usuario = usuarios_map.get(item["id_usuario"])
+            if not usuario:
+                continue
+            ubicacion = ubicaciones_map.get(usuario.get("id_ubicacion"), {})
+            formatted.append({
+                "id": item["id_servicio"],
+                "name": usuario.get("nombre", "Desconocido"),
+                "location": ubicacion.get("barrio_zona", "Sin ubicación"),
+                "title": item["titulo"],
+                "description": item["descripcion"],
+                "status": "Disponible"
+            })
+
+        return formatted
 
         if getattr(response, "error", None):
             raise HTTPException(status_code=400, detail=str(getattr(response.error, "message", response.error)))
 
+
         formatted = []
         for item in response.data:
+            usuario = item.get("Usuario")
+            if not usuario:
+                # Ignorar servicios con usuario inexistente
+                continue
             formatted.append({
                 "id": item["id_servicio"],
-                "name": item["Usuario"].get("nombre", "Desconocido"),
-                "location": item["Usuario"].get("Ubicacion", {}).get("barrio_zona", "Sin ubicación"),
+                "name": usuario.get("nombre", "Desconocido"),
+                "location": usuario.get("Ubicacion", {}).get("barrio_zona", "Sin ubicación"),
                 "title": item["titulo"],
                 "description": item["descripcion"],
                 "status": "Disponible"
@@ -78,7 +95,6 @@ async def get_recent_requests():
 class ServicioBase(BaseModel):
     titulo: str
     descripcion: str
-    id_usuario: int = 1  # Default value
     id_categoria: int = 1  # Default value
 
 class Servicio(ServicioBase):
@@ -104,20 +120,10 @@ async def get_servicios(q: str = Query(None)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/servicios", response_model=Servicio)
-async def create_servicio(servicio: ServicioBase):
-    try:
-        response = supabase.from_("Servicio").insert(servicio.dict()).execute()
-        
-        if getattr(response, "error", None):
-            raise HTTPException(status_code=400, detail=str(response.error))
-        
-        if not response.data:
-            raise HTTPException(status_code=400, detail="No data returned from insert")
-            
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+# --- El endpoint se mueve después de la definición de UserInDB y get_current_user ---
 
 # Routes for Categories
 @app.get("/categorias", response_model=list[Categoria])
@@ -275,6 +281,22 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 async def read_users_me(current_user: UserInDB = Depends(get_current_user)):
     return current_user
 
+@app.post("/servicios", response_model=Servicio)
+async def create_servicio(
+    servicio: ServicioBase,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    try:
+        data = servicio.dict()
+        data["id_usuario"] = current_user.id_usuario
+        response = supabase.from_("Servicio").insert(data).execute()
+        if getattr(response, "error", None):
+            raise HTTPException(status_code=400, detail=str(response.error))
+        if not response.data:
+            raise HTTPException(status_code=400, detail="No data returned from insert")
+        return response.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

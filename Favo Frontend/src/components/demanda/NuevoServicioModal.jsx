@@ -4,8 +4,7 @@ export const NuevoServicioModal = ({ isOpen, onClose, apiUrl }) => {
   const [formData, setFormData] = useState({
     titulo: "",
     descripcion: "",
-    id_categoria: 1,
-    id_usuario: 1 // You may want to get this from auth context
+    id_categoria: 1
   });
   const [categorias, setCategorias] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -61,10 +60,12 @@ export const NuevoServicioModal = ({ isOpen, onClose, apiUrl }) => {
     setSuccess(false);
 
     try {
+      const token = localStorage.getItem('access_token');
       const response = await fetch(`${apiUrl}/servicios`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify(formData)
       });
@@ -82,8 +83,7 @@ export const NuevoServicioModal = ({ isOpen, onClose, apiUrl }) => {
       setFormData({
         titulo: "",
         descripcion: "",
-        id_categoria: categorias.length > 0 ? categorias[0].id_categoria : 1,
-        id_usuario: 1
+        id_categoria: categorias.length > 0 ? categorias[0].id_categoria : 1
       });
 
       setTimeout(() => {

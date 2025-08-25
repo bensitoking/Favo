@@ -82,11 +82,17 @@ export const Servicios = () => {
                       <div key={servicio.id_servicio} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                         <h3 className="font-medium text-lg">{servicio.titulo}</h3>
                         <p className="text-gray-600 text-sm mt-2">{servicio.descripcion}</p>
+                        {/* Aquí puedes agregar más detalles como ubicación, tiempo, pago, etc. */}
                         <div className="flex justify-between items-center mt-4">
                           <span className="text-xs text-gray-500">ID: {servicio.id_servicio}</span>
-                          <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors">
-                            Contactar
-                          </button>
+                          <div className="flex gap-2">
+                            <button className="bg-blue-900 text-white px-6 py-2 rounded hover:bg-blue-800 transition-colors">
+                              Contactar
+                            </button>
+                            <button className="bg-orange-500 text-white px-6 py-2 rounded hover:bg-orange-600 transition-colors">
+                              Contratar
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}

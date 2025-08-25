@@ -41,9 +41,14 @@ export const ServiceCard = ({ provider }) => {
       </div>
       
       <div className="px-5 py-4 bg-gray-50 border-t border-gray-100 flex justify-end items-center">
-        <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:shadow-md">
-          Contactar
-        </button>
+        <div className="flex gap-2">
+          <button className="bg-blue-900 text-white px-6 py-2 rounded hover:bg-blue-800 transition-colors">
+            Contactar
+          </button>
+          <button className="bg-orange-500 text-white px-6 py-2 rounded hover:bg-orange-600 transition-colors">
+            Contratar
+          </button>
+        </div>
       </div>
     </div>
   );

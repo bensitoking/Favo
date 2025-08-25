@@ -76,9 +76,12 @@ export const RecentRequests = ({ apiUrl }) => {
           </div>
           <h3 className="font-medium text-gray-800 mb-2">{r.title}</h3>
           <p className="text-gray-600 mb-4 line-clamp-2">{r.description}</p>
-          <div className="flex justify-end">
-            <button className="bg-[#1a365d] text-white px-4 py-2 rounded-md hover:bg-[#234781] transition-colors text-sm">
+          <div className="flex justify-end gap-2">
+            <button className="bg-blue-900 text-white px-6 py-2 rounded hover:bg-blue-800 transition-colors">
               Contactar
+            </button>
+            <button className="bg-orange-500 text-white px-6 py-2 rounded hover:bg-orange-600 transition-colors">
+              Contratar
             </button>
           </div>
         </div>
