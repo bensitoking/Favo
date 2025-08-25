@@ -92,8 +92,10 @@ export const RegisterPage = () => {
       }
 
       const data = await loginResponse.json();
-      localStorage.setItem('access_token', data.access_token);
-      navigate('/');
+  localStorage.setItem('access_token', data.access_token);
+  // Disparar manualmente el evento storage para que el header se actualice
+  window.dispatchEvent(new StorageEvent('storage', { key: 'access_token', newValue: data.access_token }));
+  navigate('/');
     } catch (error) {
       setErrors({
         ...errors,

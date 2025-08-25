@@ -89,8 +89,11 @@ export const LoginPage = () => {
       
       if (rememberMe) {
         localStorage.setItem('access_token', access_token);
+        // Disparar manualmente el evento storage para que el header se actualice
+        window.dispatchEvent(new StorageEvent('storage', { key: 'access_token', newValue: access_token }));
       } else {
         sessionStorage.setItem('access_token', access_token);
+        window.dispatchEvent(new StorageEvent('storage', { key: 'access_token', newValue: access_token }));
       }
 
       navigate('/');

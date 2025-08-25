@@ -28,6 +28,8 @@ key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI
 supabase: Client = create_client(url, key)
 
 
+
+
 # Pydantic models
 class RecentRequest(BaseModel):
     id: int
@@ -37,57 +39,168 @@ class RecentRequest(BaseModel):
     description: str
     status: str
 
-# Endpoint for recent requests
-@app.get("/recent-requests", response_model=list[RecentRequest])
-async def get_recent_requests():
+# --- Mover definición de UserInDB y get_current_user aquí ---
+SECRET_KEY = "guivi"  # Change this to a strong secret key
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+class UserCreate(BaseModel):
+    email: str
+    password: str
+    nombre: Optional[str] = None
+
+class UserInDB(BaseModel):
+    id_usuario: int
+    mail: str
+    password: str
+    nombre: Optional[str] = None
+    disabled: Optional[bool] = None
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+def verify_password(plain_password: str, hashed_password: str):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password: str):
+    return pwd_context.hash(password)
+
+async def get_user(email: str):
+    response = supabase.from_("Usuario").select("*").eq("mail", email).execute()
+    if response.data:
+        user_dict = response.data[0]
+        return UserInDB(**user_dict)
+    return None
+
+async def authenticate_user(email: str, password: str):
+    user = await get_user(email)
+    if not user:
+        return False
+    if not verify_password(password, user.password):
+        return False
+    return user
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    user = await get_user(email)
+    if user is None:
+        raise credentials_exception
+    return user
 
-        # Solo traer servicios cuyo id_usuario existe en Usuario
-        servicios_response = supabase.from_("Servicio").select("*" ).limit(20).execute()
-        usuarios_response = supabase.from_("Usuario").select("id_usuario, nombre, id_ubicacion").execute()
-        ubicaciones_response = supabase.from_("Ubicacion").select("id_ubicacion, barrio_zona").execute()
+# Modelo para notificaciones_servicios
+class NotificacionServicioBase(BaseModel):
+    titulo: str
+    desc: str
+    precio: float
+    ubicacion: str
+    id_usuario: int
 
-        usuarios_map = {u["id_usuario"]: u for u in usuarios_response.data}
-        ubicaciones_map = {u["id_ubicacion"]: u for u in ubicaciones_response.data}
+class NotificacionServicio(NotificacionServicioBase):
+    id: int
 
-        formatted = []
-        for item in servicios_response.data:
-            usuario = usuarios_map.get(item["id_usuario"])
-            if not usuario:
-                continue
-            ubicacion = ubicaciones_map.get(usuario.get("id_ubicacion"), {})
-            formatted.append({
-                "id": item["id_servicio"],
-                "name": usuario.get("nombre", "Desconocido"),
-                "location": ubicacion.get("barrio_zona", "Sin ubicación"),
-                "title": item["titulo"],
-                "description": item["descripcion"],
-                "status": "Disponible"
-            })
 
-        return formatted
 
+# Endpoint para obtener todas las notificaciones de servicios del usuario autenticado
+
+
+@app.get("/notificaciones_servicios", response_model=list[NotificacionServicio])
+async def get_notificaciones_servicios(current_user: UserInDB = Depends(get_current_user)):
+    try:
+        response = supabase.from_("notificaciones_servicios").select("*").eq("id_usuario", current_user.id_usuario).execute()
         if getattr(response, "error", None):
-            raise HTTPException(status_code=400, detail=str(getattr(response.error, "message", response.error)))
+            raise HTTPException(status_code=400, detail=str(response.error))
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Endpoint para crear una nueva notificación de servicio
+@app.post("/notificaciones_servicios", response_model=NotificacionServicio)
+async def create_notificacion_servicio(notificacion: NotificacionServicioBase):
+    try:
+        response = supabase.from_("notificaciones_servicios").insert(notificacion.dict()).execute()
+        if getattr(response, "error", None):
+            raise HTTPException(status_code=400, detail=str(response.error))
+        if not response.data:
+            raise HTTPException(status_code=400, detail="No data returned from insert")
+        return response.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Endpoint para obtener una notificación por ID
+@app.get("/notificaciones_servicios/{id}", response_model=NotificacionServicio)
+async def get_notificacion_servicio(id: int):
+    try:
+        response = supabase.from_("notificaciones_servicios").select("*").eq("id", id).single().execute()
+        if getattr(response, "error", None):
+            raise HTTPException(status_code=404, detail="Notificación no encontrada")
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-        formatted = []
-        for item in response.data:
-            usuario = item.get("Usuario")
-            if not usuario:
-                # Ignorar servicios con usuario inexistente
-                continue
-            formatted.append({
-                "id": item["id_servicio"],
-                "name": usuario.get("nombre", "Desconocido"),
-                "location": usuario.get("Ubicacion", {}).get("barrio_zona", "Sin ubicación"),
-                "title": item["titulo"],
-                "description": item["descripcion"],
-                "status": "Disponible"
-            })
+# Endpoint para eliminar una notificación por ID (solo si pertenece al usuario)
+@app.delete("/notificaciones_servicios/{id}")
+async def delete_notificacion_servicio(id: int, current_user: UserInDB = Depends(get_current_user)):
+    try:
+        # Verificar que la notificación pertenece al usuario
+        notif = supabase.from_("notificaciones_servicios").select("*").eq("id", id).single().execute()
+        if not notif.data or notif.data["id_usuario"] != current_user.id_usuario:
+            raise HTTPException(status_code=403, detail="No autorizado para eliminar esta notificación")
+        response = supabase.from_("notificaciones_servicios").delete().eq("id", id).execute()
+        if getattr(response, "error", None):
+            raise HTTPException(status_code=400, detail=str(response.error))
+        return {"message": "Notificación eliminada"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-        return formatted
+# Endpoint para aceptar una notificación (puedes modificar el estado o eliminarla)
+@app.post("/notificaciones_servicios/{id}/aceptar")
+async def aceptar_notificacion_servicio(id: int, current_user: UserInDB = Depends(get_current_user)):
+    try:
+        notif = supabase.from_("notificaciones_servicios").select("*").eq("id", id).single().execute()
+        if not notif.data or notif.data["id_usuario"] != current_user.id_usuario:
+            raise HTTPException(status_code=403, detail="No autorizado para aceptar esta notificación")
+        # Aquí podrías actualizar un campo de estado, pero por ahora la eliminamos
+        supabase.from_("notificaciones_servicios").delete().eq("id", id).execute()
+        return {"message": "Notificación aceptada"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
+# Endpoint para rechazar una notificación (puedes modificar el estado o eliminarla)
+@app.post("/notificaciones_servicios/{id}/rechazar")
+async def rechazar_notificacion_servicio(id: int, current_user: UserInDB = Depends(get_current_user)):
+    try:
+        notif = supabase.from_("notificaciones_servicios").select("*").eq("id", id).single().execute()
+        if not notif.data or notif.data["id_usuario"] != current_user.id_usuario:
+            raise HTTPException(status_code=403, detail="No autorizado para rechazar esta notificación")
+        # Aquí podrías actualizar un campo de estado, pero por ahora la eliminamos
+        supabase.from_("notificaciones_servicios").delete().eq("id", id).execute()
+        return {"message": "Notificación rechazada"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

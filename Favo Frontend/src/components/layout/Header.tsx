@@ -1,12 +1,17 @@
 import React, { useEffect, useState } from 'react'; 
-import { MessageSquareIcon, ShoppingBagIcon, UserIcon, HelpCircleIcon } from 'lucide-react';
+import { MessageSquareIcon, ShoppingBagIcon, UserIcon, HelpCircleIcon, BellIcon } from 'lucide-react';
+import { NotificacionesModal } from './NotificacionesModal';
 import { Link, useLocation } from 'react-router-dom';
 import { Spinner } from './Spinner';
 
+
 export const Header = ({ isLoading = false }) => {
   const location = useLocation();
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<any>(null);
   const [loadingUser, setLoadingUser] = useState(true);
+  const [showNotificaciones, setShowNotificaciones] = useState(false);
+  const [notificaciones, setNotificaciones] = useState<any[]>([]);
+  const [loadingNotificaciones, setLoadingNotificaciones] = useState(false);
 
   const API_URL = 'http://localhost:8000';
 
@@ -15,12 +20,12 @@ export const Header = ({ isLoading = false }) => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        // 🔹 Buscar primero en localStorage, si no existe buscar en sessionStorage
         const token =
           localStorage.getItem('access_token') ||
           sessionStorage.getItem('access_token');
 
         if (!token) {
+          setUser(null);
           setLoadingUser(false);
           return;
         }
@@ -30,20 +35,54 @@ export const Header = ({ isLoading = false }) => {
             'Authorization': `Bearer ${token}`
           }
         });
-        
         if (response.ok) {
           const userData = await response.json();
           setUser(userData);
+        } else {
+          setUser(null);
         }
       } catch (error) {
         console.error('Error fetching user:', error);
+        setUser(null);
       } finally {
         setLoadingUser(false);
       }
     };
 
     fetchUser();
+
+    // Escuchar cambios en el storage para actualizar el usuario en login/logout
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'access_token') {
+        fetchUser();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+    };
   }, []);
+
+  // Fetch notificaciones solo cuando el modal se abre
+  useEffect(() => {
+    if (showNotificaciones && user) {
+      setLoadingNotificaciones(true);
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      fetch(`${API_URL}/notificaciones_servicios`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+        .then(res => res.json())
+        .then(data => {
+          // Solo mostrar notificaciones del usuario logueado
+          setNotificaciones(Array.isArray(data) ? data.filter(n => n.id_usuario === user.id_usuario) : []);
+        })
+        .catch(() => setNotificaciones([]))
+        .finally(() => setLoadingNotificaciones(false));
+    }
+  }, [showNotificaciones, user]);
 
   const handleLogout = () => {
     // 🔹 Eliminar tokens de ambos lugares
@@ -83,6 +122,53 @@ export const Header = ({ isLoading = false }) => {
 
         {user ? (
           <div className="flex items-center gap-4">
+            {/* Campanita de notificaciones */}
+            <button
+              className="relative text-gray-600 hover:text-blue-700 focus:outline-none"
+              title="Notificaciones"
+              onClick={() => setShowNotificaciones(true)}
+            >
+              <BellIcon size={22} />
+              {notificaciones.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">{notificaciones.length}</span>
+              )}
+            </button>
+            {showNotificaciones && (
+              <NotificacionesModal
+                notificaciones={notificaciones}
+                onAceptar={async (id) => {
+                  const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+                  await fetch(`${API_URL}/notificaciones_servicios/${id}/aceptar`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                  });
+                  // Refrescar notificaciones
+                  fetch(`${API_URL}/notificaciones_servicios`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                  })
+                    .then(res => res.json())
+                    .then(data => setNotificaciones(Array.isArray(data) ? data.filter(n => n.id_usuario === user.id_usuario) : []));
+                }}
+                onRechazar={async (id) => {
+                  const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+                  await fetch(`${API_URL}/notificaciones_servicios/${id}/rechazar`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                  });
+                  // Refrescar notificaciones
+                  fetch(`${API_URL}/notificaciones_servicios`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                  })
+                    .then(res => res.json())
+                    .then(data => setNotificaciones(Array.isArray(data) ? data.filter(n => n.id_usuario === user.id_usuario) : []));
+                }}
+                onMensaje={(id) => {
+                  // Aquí podrías redirigir a la pantalla de mensajes o abrir chat
+                  setShowNotificaciones(false);
+                }}
+                onClose={() => setShowNotificaciones(false)}
+              />
+            )}
             <nav className="hidden md:flex items-center space-x-6 text-sm">
               <Link
                 to="/"
