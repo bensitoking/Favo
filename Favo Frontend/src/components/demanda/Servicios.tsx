@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { RecentRequests } from "./RecentRequests";
 import { TrendingColumn } from "./TrendingColumn";
 import { ContratarForm } from "./ContratarForm";
 import { useSearchParams } from "react-router-dom";
@@ -98,7 +97,6 @@ export const Servicios = () => {
                   </div>
                 )}
               </div>
-              <RecentRequests apiUrl={API_URL} />
             </div>
             <div className="lg:col-span-1">
               <TrendingColumn apiUrl={API_URL} />

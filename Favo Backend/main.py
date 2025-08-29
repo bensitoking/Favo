@@ -51,13 +51,6 @@ key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI
 supabase: Client = create_client(url, key)
 
 # Pydantic models
-class RecentRequest(BaseModel):
-    id: int
-    name: str
-    location: str
-    title: str
-    description: str
-    status: str
 
 # --- Definiciones de usuario y autenticación ---
 SECRET_KEY = "guivi"  # Change this to a strong secret key
@@ -189,7 +182,14 @@ async def get_notificacion_servicio(id: int, current_user: UserInDB = Depends(ge
 @app.delete("/notificaciones_servicios/{id}")
 async def delete_notificacion_servicio(id: int, current_user: UserInDB = Depends(get_current_user)):
     try:
-        # Permitir que cualquier usuario autenticado elimine cualquier notificación
+        # 1. Verificar que la notificación existe y pertenece al usuario
+        notif = supabase.from_("notificaciones_servicios").select("*").eq("id", id).single().execute()
+        if not notif.data:
+            raise HTTPException(status_code=404, detail="Notificación no encontrada")
+        if notif.data["id_usuario"] != current_user.id_usuario:
+            raise HTTPException(status_code=403, detail="No autorizado para borrar esta notificación")
+
+        # 2. Borrar la notificación
         response = supabase.from_("notificaciones_servicios").delete().eq("id", id).execute()
         if hasattr(response, 'error') and response.error:
             raise HTTPException(status_code=400, detail=str(response.error))
