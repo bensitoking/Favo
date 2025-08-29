@@ -1,14 +1,25 @@
 import React, { useState, useEffect } from "react";
 
-export const NuevoServicioModal = ({ isOpen, onClose, apiUrl }) => {
+interface Categoria {
+  id_categoria: number;
+  nombre: string;
+}
+
+interface NuevoServicioModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  apiUrl: string;
+}
+
+export const NuevoServicioModal: React.FC<NuevoServicioModalProps> = ({ isOpen, onClose, apiUrl }) => {
   const [formData, setFormData] = useState({
     titulo: "",
     descripcion: "",
-    id_categoria: 1
+    id_categoria: 1,
   });
-  const [categorias, setCategorias] = useState([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [loadingCategorias, setLoadingCategorias] = useState(true);
 
@@ -18,19 +29,15 @@ export const NuevoServicioModal = ({ isOpen, onClose, apiUrl }) => {
         try {
           setLoadingCategorias(true);
           const response = await fetch(`${apiUrl}/categorias/simple`);
-          
-          if (!response.ok) {
-            throw new Error("Error al cargar categorías");
-          }
-          
-          const data = await response.json();
+          if (!response.ok) throw new Error("Error al cargar categorías");
+
+          const data: Categoria[] = await response.json();
           setCategorias(data);
-          
-          // Set default category if available
+
           if (data.length > 0) {
-            setFormData(prev => ({
+            setFormData((prev) => ({
               ...prev,
-              id_categoria: data[0].id_categoria
+              id_categoria: data[0].id_categoria,
             }));
           }
         } catch (err) {
@@ -45,54 +52,53 @@ export const NuevoServicioModal = ({ isOpen, onClose, apiUrl }) => {
     }
   }, [isOpen, apiUrl]);
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
     setSuccess(false);
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem("access_token");
       const response = await fetch(`${apiUrl}/servicios`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || 'Error al guardar el servicio');
+        throw new Error(errorData.detail || "Error al guardar el servicio");
       }
 
       const data = await response.json();
-      console.log('Servicio creado:', data);
+      console.log("Servicio creado:", data);
       setSuccess(true);
-      
-      // Reset form
+
       setFormData({
         titulo: "",
         descripcion: "",
-        id_categoria: categorias.length > 0 ? categorias[0].id_categoria : 1
+        id_categoria: categorias.length > 0 ? categorias[0].id_categoria : 1,
       });
 
       setTimeout(() => {
-        onClose(); // Close modal and trigger parent refresh
+        onClose();
         setSuccess(false);
       }, 1500);
-    } catch (err) {
-      console.error('Error al crear servicio:', err);
-      setError(err.message || 'Error al guardar el servicio');
+    } catch (err: any) {
+      console.error("Error al crear servicio:", err);
+      setError(err.message || "Error al guardar el servicio");
     } finally {
       setIsSubmitting(false);
     }
@@ -104,13 +110,13 @@ export const NuevoServicioModal = ({ isOpen, onClose, apiUrl }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
         <h2 className="text-xl font-semibold mb-4">Añadir nuevo servicio</h2>
-        
+
         {success && (
           <div className="mb-4 p-3 bg-green-100 text-green-800 rounded">
             ¡Servicio creado exitosamente!
           </div>
         )}
-        
+
         {error && (
           <div className="mb-4 p-3 bg-red-100 text-red-800 rounded">
             {error}
@@ -167,7 +173,7 @@ export const NuevoServicioModal = ({ isOpen, onClose, apiUrl }) => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 disabled={isSubmitting}
               >
-                {categorias.map(categoria => (
+                {categorias.map((categoria) => (
                   <option key={categoria.id_categoria} value={categoria.id_categoria}>
                     {categoria.nombre}
                   </option>
@@ -193,12 +199,30 @@ export const NuevoServicioModal = ({ isOpen, onClose, apiUrl }) => {
               {isSubmitting ? (
                 <>
                   <span className="mr-2">Guardando...</span>
-                  <svg className="animate-spin h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin h-4 w-4 text-white inline"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                 </>
-              ) : 'Guardar'}
+              ) : (
+                "Guardar"
+              )}
             </button>
           </div>
         </form>

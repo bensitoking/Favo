@@ -149,10 +149,7 @@ async def get_notificaciones_servicios(current_user: UserInDB = Depends(get_curr
 async def create_notificacion_servicio(notificacion: NotificacionServicioBase, current_user: UserInDB = Depends(get_current_user)):
     try:
         notificacion_data = notificacion.dict()
-        # El id_usuario de la notificación debe ser el destinatario (dueño del servicio),
-        # que viene en el body, NO el usuario autenticado
-        # Así, solo el destinatario verá la notificación
-        # notificacion_data["id_usuario"] = notificacion.id_usuario
+
         response = supabase.from_("notificaciones_servicios").insert(notificacion_data).execute()
         if hasattr(response, 'error') and response.error:
             raise HTTPException(status_code=400, detail=str(response.error))
@@ -242,7 +239,8 @@ class Categoria(BaseModel):
 @app.get("/servicios")
 async def get_servicios(q: str = Query(None)):
     try:
-        query = supabase.from_("Servicio").select("*").order("id_servicio", desc=True)
+        # Seleccionamos los servicios junto con los datos del usuario
+        query = supabase.from_("Servicio").select("id_servicio,titulo,descripcion,id_usuario,Usuario(nombre)").order("id_servicio", desc=True)
         
         if q and q.strip():
             query = query.or_(f"titulo.ilike.%{q}%,descripcion.ilike.%{q}%")
