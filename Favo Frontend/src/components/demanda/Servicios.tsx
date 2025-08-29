@@ -1,14 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { RecentRequests } from "./RecentRequests";
 import { TrendingColumn } from "./TrendingColumn";
-import { NuevoServicioModal } from "./NuevoServicioModal";
+import { ContratarForm } from "./ContratarForm";
 import { useSearchParams } from "react-router-dom";
 
 const API_URL =  "http://localhost:8000";
 
 export const Servicios = () => {
-  const [modalAbierto, setModalAbierto] = useState(false);
-  const [servicios, setServicios] = useState([]);
+  const [modalContratar, setModalContratar] = useState<{ open: boolean, servicioId?: number, destinatarioId?: number } | null>(null);
+  type Servicio = {
+    id_servicio: number;
+    titulo: string;
+    descripcion: string;
+    id_usuario: number;
+    // ...otros campos si existen
+  };
+  const [servicios, setServicios] = useState<Servicio[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get("q") || "";
@@ -35,17 +42,7 @@ export const Servicios = () => {
     fetchServicios();
   }, [searchQuery]);
 
-  const handleServicioCreado = async () => {
-    setModalAbierto(false);
-    try {
-      const response = await fetch(`${API_URL}/servicios`);
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const data = await response.json();
-      setServicios(data);
-    } catch (error) {
-      console.error("Error refreshing servicios:", error);
-    }
-  };
+
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -57,7 +54,6 @@ export const Servicios = () => {
                 <h2 className="text-xl font-semibold mb-4">
                   {searchQuery ? `Resultados para: "${searchQuery}"` : "Todos los servicios"}
                 </h2>
-                
                 {loading ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {[...Array(4)].map((_, i) => (
@@ -89,7 +85,10 @@ export const Servicios = () => {
                             <button className="bg-blue-900 text-white px-6 py-2 rounded hover:bg-blue-800 transition-colors">
                               Contactar
                             </button>
-                            <button className="bg-orange-500 text-white px-6 py-2 rounded hover:bg-orange-600 transition-colors">
+                            <button
+                              className="bg-orange-500 text-white px-6 py-2 rounded hover:bg-orange-600 transition-colors"
+                              onClick={() => setModalContratar({ open: true, servicioId: servicio.id_servicio, destinatarioId: servicio.id_usuario })}
+                            >
                               Contratar
                             </button>
                           </div>
@@ -99,10 +98,8 @@ export const Servicios = () => {
                   </div>
                 )}
               </div>
-              
               <RecentRequests apiUrl={API_URL} />
             </div>
-            
             <div className="lg:col-span-1">
               <TrendingColumn apiUrl={API_URL} />
             </div>
@@ -110,27 +107,12 @@ export const Servicios = () => {
         </div>
       </main>
 
-      <button
-        onClick={() => setModalAbierto(true)}
-        className="fixed bottom-6 right-6 bg-[#1D4ED8] hover:bg-blue-800 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg transition-colors"
-        aria-label="Añadir nuevo servicio"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="w-6 h-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-        </svg>
-      </button>
-
-      <NuevoServicioModal 
-        isOpen={modalAbierto} 
-        onClose={handleServicioCreado} 
-        apiUrl={API_URL}
+      {/* Modal de contratar por servicio */}
+      <ContratarForm
+        open={!!modalContratar?.open}
+        onClose={() => setModalContratar(null)}
+        servicioId={modalContratar?.servicioId || 0}
+        destinatarioId={modalContratar?.destinatarioId || 0}
       />
     </div>
   );
