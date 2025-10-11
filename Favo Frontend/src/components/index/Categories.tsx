@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronRightIcon } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const API_URL = "http://localhost:8000";
 
-export const Categories = () => {
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+type CategoryItem = {
+  id: number;
+  name: string;
+  count: string;
+  color: string;
+}
+
+export const Categories: React.FC = () => {
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -20,7 +28,7 @@ export const Categories = () => {
         
         const data = await response.json();
         
-        const enrichedCategories = data.map(category => ({
+        const enrichedCategories: CategoryItem[] = (data || []).map((category: any) => ({
           id: category.id_categoria,
           name: category.nombre,
           count: `${category.count} pedidos`,
@@ -28,9 +36,9 @@ export const Categories = () => {
         }));
         
         setCategories(enrichedCategories);
-      } catch (error) {
-        console.error('Error fetching categories:', error);
-        setError(error.message);
+      } catch (err: unknown) {
+        console.error('Error fetching categories:', err);
+        setError(err instanceof Error ? err.message : String(err));
       } finally {
         setLoading(false);
       }
@@ -39,7 +47,7 @@ export const Categories = () => {
     fetchCategories();
   }, []);
 
-  const getCategoryColor = (id) => {
+  const getCategoryColor = (id: number) => {
     const colors = [
       'bg-blue-50 hover:bg-blue-100',
       'bg-orange-50 hover:bg-orange-100',
@@ -80,9 +88,9 @@ export const Categories = () => {
           <h2 className="text-3xl font-bold text-gray-800">
             Categorías populares
           </h2>
-          <a href="#" className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center transition-colors">
+          <Link to="/categorias" className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center transition-colors">
             Ver todas <ChevronRightIcon size={16} className="ml-1" />
-          </a>
+          </Link>
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

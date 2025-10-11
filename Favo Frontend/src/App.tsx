@@ -10,6 +10,7 @@ import { LoginPage } from './components/login/LoginPage'
 import { TrendingColumn } from './components/demanda/TrendingColumn'
 import { Servicios } from './components/demanda/Servicios'
 import { RegisterPage } from './components/login/RegisterPage'
+import CategoriesAll from './components/index/CategoriesAll'
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path="pedidos" element={<MyOrdersPage/>} />
           <Route path="ayuda" element={<HelpPage/>} />
           <Route path="demanda" element={<Servicios/>} />
+          <Route path="categorias" element={<CategoriesAll/>} />
            <Route path="login" element={<LoginPage />} />
           <Route path="register" element={<RegisterPage />} />
         </Route>

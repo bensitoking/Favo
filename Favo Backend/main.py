@@ -72,6 +72,20 @@ class UserInDB(BaseModel):
     nombre: Optional[str] = None
     disabled: Optional[bool] = None
 
+
+# Public profile model (no password)
+class UserProfile(BaseModel):
+    id_usuario: int
+    mail: str
+    nombre: Optional[str] = None
+    verificado: Optional[bool] = None
+    fecha_registro: Optional[str] = None
+    esProveedor: Optional[bool] = None
+    esDemanda: Optional[bool] = None
+    id_ubicacion: Optional[int] = None
+    foto_perfil: Optional[str] = None
+    descripcion: Optional[str] = None
+
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -145,6 +159,73 @@ class NotificacionServicio(NotificacionServicioBase):
 async def get_notificaciones_servicios(current_user: UserInDB = Depends(get_current_user)):
     response = supabase.from_("notificaciones_servicios").select("*").eq("id_usuario", current_user.id_usuario).execute()
     return response.data
+
+
+# Ubicaciones endpoints
+@app.get("/ubicaciones")
+async def list_ubicaciones():
+    try:
+        response = supabase.from_("Ubicacion").select("*").execute()
+        if hasattr(response, 'error') and response.error:
+            raise HTTPException(status_code=400, detail=str(response.error))
+        return response.data or []
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/ubicaciones/{id}")
+async def get_ubicacion(id: int):
+    try:
+        response = supabase.from_("Ubicacion").select("*").eq("id_ubicacion", id).single().execute()
+        if hasattr(response, 'error') and response.error:
+            raise HTTPException(status_code=404, detail=str(response.error))
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Ubicación no encontrada")
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Allow user profile updates (nombre, descripcion, id_ubicacion, foto_perfil as base64 string)
+class UserUpdate(BaseModel):
+    nombre: Optional[str] = None
+    descripcion: Optional[str] = None
+    id_ubicacion: Optional[int] = None
+    foto_perfil_base64: Optional[str] = None
+
+
+@app.put("/users/me/", response_model=UserProfile)
+async def update_users_me(update: UserUpdate, current_user: UserInDB = Depends(get_current_user)):
+    try:
+        update_data = {}
+        if update.nombre is not None:
+            update_data["nombre"] = update.nombre
+        if update.descripcion is not None:
+            update_data["descripcion"] = update.descripcion
+        if update.id_ubicacion is not None:
+            update_data["id_ubicacion"] = update.id_ubicacion
+        if update.foto_perfil_base64 is not None:
+            # store as text base64; frontend should send base64 string without data: prefix
+            update_data["foto_perfil"] = update.foto_perfil_base64
+
+        if not update_data:
+            raise HTTPException(status_code=400, detail="No fields to update")
+
+        response = supabase.from_("Usuario").update(update_data).eq("id_usuario", current_user.id_usuario).execute()
+        if hasattr(response, 'error') and response.error:
+            raise HTTPException(status_code=400, detail=str(response.error))
+
+        # fetch updated user (without password)
+        user_row = supabase.from_("Usuario").select("id_usuario,nombre,verificado,fecha_registro,esProveedor,esDemanda,id_ubicacion,foto_perfil,mail,descripcion").eq("id_usuario", current_user.id_usuario).single().execute()
+        if not user_row.data:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado después de la actualización")
+
+        # convert to public profile model
+        user_public = user_row.data
+        # if foto_perfil is stored as base64 in DB, expose it as foto_perfil
+        return user_public
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 @app.post("/notificaciones_servicios", response_model=NotificacionServicio)
 async def create_notificacion_servicio(notificacion: NotificacionServicioBase, current_user: UserInDB = Depends(get_current_user)):
     try:
@@ -289,6 +370,7 @@ async def get_simple_categorias():
         return response.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
 
 # Auth endpoints
 @app.post("/register", response_model=UserInDB)
