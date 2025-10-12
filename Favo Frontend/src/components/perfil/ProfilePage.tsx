@@ -162,18 +162,16 @@ export const ProfilePage = () => {
                   <span className="text-green-600">{user?.verificado ? 'Identidad verificada' : 'No verificado'}</span>
                 </div>
               </div>
-              <button className="bg-blue-800 text-white px-4 py-2 rounded-lg hover:bg-blue-900">Editar perfil</button>
+              <button onClick={() => {
+                setEditing(true);
+                setNameInput(user?.nombre || '');
+                setDescInput(user?.descripcion || '');
+                setSelectedLocationId(user?.id_ubicacion || null);
+              }} className="bg-blue-800 text-white px-4 py-2 rounded-lg hover:bg-blue-900">Editar perfil</button>
             </div>
-            {/* Edit form/modal */}
+            {/* Edit form/modal - preserved in original position, only toggled by the top button */}
             <div>
-              {!editing ? (
-                <button onClick={() => {
-                  setEditing(true);
-                  setNameInput(user?.nombre || '');
-                  setDescInput(user?.descripcion || '');
-                  setSelectedLocationId(user?.id_ubicacion || null);
-                }} className="bg-blue-800 text-white px-4 py-2 rounded-lg hover:bg-blue-900">Editar perfil</button>
-              ) : (
+              {editing && (
                 <div className="mt-4 bg-gray-50 p-4 rounded">
                   <div className="grid grid-cols-1 gap-3">
                     <label className="text-sm">Nombre</label>
