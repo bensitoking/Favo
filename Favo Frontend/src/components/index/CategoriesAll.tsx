@@ -133,17 +133,18 @@ export default function CategoriesAll() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {filtered.map((cat) => (
-            <div
-              key={cat.id_categoria}
-              className={`${getCategoryColor(cat.id_categoria)} rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group`}
-            >
-              <div className="flex flex-col items-center text-center">
-                <h3 className="text-lg font-semibold text-gray-800 mb-2 group-hover:text-blue-600 transition-colors">
-                  {cat.nombre}
-                </h3>
-                <span className="text-sm text-gray-500">{cat.count} pedidos</span>
+            <Link key={cat.id_categoria} to={`/categorias/${cat.id_categoria}`} className="block">
+              <div
+                className={`${getCategoryColor(cat.id_categoria)} rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group`}
+              >
+                <div className="flex flex-col items-center text-center">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2 group-hover:text-blue-600 transition-colors">
+                    {cat.nombre}
+                  </h3>
+                  <span className="text-sm text-gray-500">{cat.count} pedidos</span>
+                </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
 

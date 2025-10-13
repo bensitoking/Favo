@@ -42,22 +42,48 @@ export const ProfilePage = () => {
           }
         }
 
-        setUser(currentUser);
-
-        // If user has a foreign key to Ubicacion, try to fetch it
-        if (currentUser && currentUser.id_ubicacion) {
-          try {
-            const ubRes = await fetch(`${API_URL}/ubicaciones/${currentUser.id_ubicacion}`);
-            if (ubRes.ok) {
-              const ub = await ubRes.json();
-              // attach to user for convenience
-              currentUser.Ubicacion = ub;
-              setUser({ ...currentUser });
-              // preselect location for editing
-              setSelectedLocationId(currentUser.id_ubicacion || null);
+        // Normalize fields that may come under different names/formats
+        if (currentUser) {
+          // description may come as descripcion or description
+          currentUser.descripcion = currentUser.descripcion || currentUser.description || currentUser.desc || currentUser.bio || currentUser.about || currentUser.descripcion_text;
+          // foto may be provided as base64, url, or bytes. Prefer an explicit URL field if present
+          if (currentUser.foto_perfil_url) {
+            currentUser.foto_perfil_url = currentUser.foto_perfil_url;
+          } else if (currentUser.foto_perfil_base64) {
+            currentUser.foto_perfil_base64 = currentUser.foto_perfil_base64;
+          } else if (currentUser.foto_perfil && typeof currentUser.foto_perfil === 'string') {
+            // if backend already returns a base64 string without prefix
+            currentUser.foto_perfil_base64 = currentUser.foto_perfil;
+          } else if (currentUser.foto_perfil && currentUser.foto_perfil.data) {
+            // sometimes binary is returned as object with data
+            try {
+              const b64 = Buffer.from(currentUser.foto_perfil.data).toString('base64');
+              currentUser.foto_perfil_base64 = b64;
+            } catch (e) {
+              // ignore
             }
-          } catch (e) {
-            // ignore if backend doesn't have this endpoint
+          }
+
+          setUser(currentUser);
+
+          // If user has a foreign key to Ubicacion, try to fetch it (pass token if available)
+          if (currentUser.id_ubicacion) {
+            try {
+              const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+              const headers: any = {};
+              if (token) headers['Authorization'] = `Bearer ${token}`;
+              const ubRes = await fetch(`${API_URL}/ubicaciones/${currentUser.id_ubicacion}`, { headers });
+              if (ubRes.ok) {
+                const ub = await ubRes.json();
+                // attach to user for convenience
+                currentUser.Ubicacion = ub;
+                setUser({ ...currentUser });
+                // preselect location for editing
+                setSelectedLocationId(currentUser.id_ubicacion || null);
+              }
+            } catch (e) {
+              // ignore if backend doesn't have this endpoint
+            }
           }
         }
 

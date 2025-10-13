@@ -8,29 +8,36 @@ interface Notificacion {
   ubicacion: string;
   id_usuario: number;
   created_at?: string;
+  source?: 'servicio' | 'pedido';
 }
 
 interface Props {
-  onAceptar: (id: number) => void;
-  onRechazar: (id: number) => void;
-  onMensaje: (id: number) => void;
+
+  notificaciones?: Notificacion[];
+  onAceptar?: (id: number) => void;
+  onRechazar?: (id: number) => void;
+  onMensaje?: (id: number) => void;
   onClose: () => void;
 }
 
 const API_BASE = "http://localhost:8000";
 
-export const NotificacionesModal: React.FC<Props> = ({
-  onAceptar,
-  onRechazar,
-  onMensaje,
-  onClose,
-}) => {
+export const NotificacionesModal: React.FC<Props> = (props: Props) => {
+  const { onClose } = props;
   const [notificaciones, setNotificaciones] = useState<Notificacion[]>([]);
   // Eliminación permanente: no se necesita estado local de eliminadas
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
   const fetchNotificaciones = useCallback(async () => {
+    // Always combine service notifications (if parent provided) with pedidos fetched
+    setLoading(true);
+    setError(null);
+    // Start with parent notifications (service-mode) if present
+    const combined: Notificacion[] = [];
+    if (props.notificaciones !== undefined) {
+      combined.push(...(props.notificaciones || []).map(n => ({ ...n, source: 'servicio' as const })));
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -61,7 +68,7 @@ export const NotificacionesModal: React.FC<Props> = ({
         window.location.href = "/login";
         return;
       }
-      const res = await fetch(`${API_BASE}/notificaciones_servicios`, {
+      const res = await fetch(`${API_BASE}/notificaciones_pedidos`, {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -96,8 +103,13 @@ export const NotificacionesModal: React.FC<Props> = ({
         setNotificaciones([]);
         return;
       }
-      const data: Notificacion[] = await res.json();
-  setNotificaciones(Array.isArray(data) ? data : []);
+  const data: Notificacion[] = await res.json();
+  const pedidos: Notificacion[] = Array.isArray(data) ? data.map(n => ({ ...n, source: 'pedido' })) : [];
+  // combine parent-provided service notifications (already in combined) with pedidos
+  const all = [...combined, ...pedidos];
+  // sort by id desc if present to show newest first
+  all.sort((a, b) => (b.id || 0) - (a.id || 0));
+  setNotificaciones(all);
     } catch (err) {
       setError("Fallo de conexión. Verificá tu conexión a internet.");
       setNotificaciones([]);
@@ -105,7 +117,7 @@ export const NotificacionesModal: React.FC<Props> = ({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [props.notificaciones]);
 
   useEffect(() => {
     fetchNotificaciones();
@@ -185,69 +197,98 @@ export const NotificacionesModal: React.FC<Props> = ({
                   </div>
                 )}
                 <div className="flex gap-2 mt-3">
-                  <button
-                    onClick={() => onAceptar(n.id)}
-                    className="bg-green-500 hover:bg-green-600 text-white rounded-full p-2 transition-colors"
-                    title="Aceptar"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
+                  {/* ACEPTAR: comportamiento distinto según source */}
+                  {n.source === 'pedido' ? (
+                    // For pedido notifications: only show Accept which will delete/ack the notification
+                    <button
+                      onClick={async () => {
+                        try {
+                          const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
+                          if (!token) { window.location.href = '/login'; return; }
+                          const res = await fetch(`${API_BASE}/notificaciones_pedidos/${n.id}`, {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                          });
+                          if (res.ok) {
+                            setNotificaciones(prev => prev.filter(x => x.id !== n.id));
+                          } else {
+                            console.error('Failed to delete notificacion pedidos', res.status);
+                          }
+                        } catch (err) { console.error(err); }
+                      }}
+                      className="bg-green-500 hover:bg-green-600 text-white rounded-full p-2 transition-colors"
+                      title="Aceptar"
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={async () => {
-                      // Eliminar notificación al tocar la X
-                      const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
-                      if (!token) return;
-                      await fetch(`${API_BASE}/notificaciones_servicios/${n.id}`, {
-                        method: "DELETE",
-                        headers: {
-                          "Authorization": `Bearer ${token}`,
-                          "Content-Type": "application/json"
-                        }
-                      });
-                      setNotificaciones(notificaciones.filter(notif => notif.id !== n.id));
-                    }}
-                    className="bg-red-500 hover:bg-red-600 text-white rounded-full p-2 transition-colors"
-                    title="Eliminar"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => onMensaje(n.id)}
-                    className="bg-blue-500 hover:bg-blue-600 text-white rounded-full p-2 transition-colors"
-                    title="Enviar mensaje"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                    </svg>
-                  </button>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </button>
+                  ) : (
+                    // Service notifications: delegate to parent handler if provided
+                    typeof props.onAceptar === 'function' ? (
+                      <button
+                        onClick={() => props.onAceptar && props.onAceptar(n.id)}
+                        className="bg-green-500 hover:bg-green-600 text-white rounded-full p-2 transition-colors"
+                        title="Aceptar"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </button>
+                    ) : null
+                  )}
+
+                  {/* If parent provided notifications (service-mode) keep eliminar/chat buttons */}
+                  {n.source === 'servicio' ? (
+                    <>
+                      <button
+                        onClick={async () => {
+                          // Eliminar notificación al tocar la X (service notifications)
+                          const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
+                          if (!token) return;
+                          await fetch(`${API_BASE}/notificaciones_servicios/${n.id}`, {
+                            method: "DELETE",
+                            headers: {
+                              "Authorization": `Bearer ${token}`,
+                              "Content-Type": "application/json"
+                            }
+                          });
+                          setNotificaciones(notificaciones.filter(notif => notif.id !== n.id));
+                        }}
+                        className="bg-red-500 hover:bg-red-600 text-white rounded-full p-2 transition-colors"
+                        title="Eliminar"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => props.onMensaje && props.onMensaje(n.id)}
+                        className="bg-blue-500 hover:bg-blue-600 text-white rounded-full p-2 transition-colors"
+                        title="Enviar mensaje"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        </svg>
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               </div>
             ))}

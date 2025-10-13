@@ -3,14 +3,14 @@ import Home from './home'
 import { ProfilePage } from './components/perfil/ProfilePage'
 import { Layout } from './components/layout/Layout'
 import { HelpPage } from './components/ayuda/HelpPage'
-import { HelpSection } from './components/ayuda/HelpSection'
 import { MyOrdersPage } from './components/pedidos/MyOrdersPage'
 import { ChatInterface } from './components/mensajes/ChatInterface'
 import { LoginPage } from './components/login/LoginPage'
-import { TrendingColumn } from './components/demanda/TrendingColumn'
 import { Servicios } from './components/demanda/Servicios'
 import { RegisterPage } from './components/login/RegisterPage'
 import CategoriesAll from './components/index/CategoriesAll'
+import CategoriaPedidos from './components/pedidos/CategoriaPedidos'
+import PedidoDetail from './components/pedidos/PedidoDetail'
 
 function App() {
   return (
@@ -24,6 +24,8 @@ function App() {
           <Route path="ayuda" element={<HelpPage/>} />
           <Route path="demanda" element={<Servicios/>} />
           <Route path="categorias" element={<CategoriesAll/>} />
+          <Route path="categorias/:id" element={<CategoriaPedidos/>} />
+          <Route path="pedido/:id" element={<PedidoDetail/>} />
            <Route path="login" element={<LoginPage />} />
           <Route path="register" element={<RegisterPage />} />
         </Route>

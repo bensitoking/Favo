@@ -154,11 +154,70 @@ class NotificacionServicioBase(BaseModel):
 class NotificacionServicio(NotificacionServicioBase):
     id: int
 
+# Notificaciones para Pedidos (nueva tabla)
+class NotificacionPedidoBase(BaseModel):
+    titulo: str
+    desc: str
+    precio: float
+    ubicacion: Optional[str] = ""
+    id_usuario: int
+    id_categoria: Optional[int] = None
+    accepted_by: Optional[int] = None
+
+class NotificacionPedido(NotificacionPedidoBase):
+    id: int
+
 # Endpoint para obtener todas las notificaciones de servicios del usuario autenticado
 @app.get("/notificaciones_servicios")
 async def get_notificaciones_servicios(current_user: UserInDB = Depends(get_current_user)):
     response = supabase.from_("notificaciones_servicios").select("*").eq("id_usuario", current_user.id_usuario).execute()
     return response.data
+
+
+@app.get("/notificaciones_pedidos")
+async def get_notificaciones_pedidos(current_user: UserInDB = Depends(get_current_user)):
+    try:
+        response = supabase.from_("notificaciones_pedidos").select("*").eq("id_usuario", current_user.id_usuario).order("id", desc=True).execute()
+        return response.data or []
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/notificaciones_pedidos", response_model=NotificacionPedido)
+async def create_notificacion_pedido(notificacion: NotificacionPedidoBase, current_user: UserInDB = Depends(get_current_user)):
+    try:
+        data = notificacion.dict()
+        # Some DB schemas may not include optional fields like id_categoria - only send keys that exist in table
+        allowed = {"titulo", "desc", "precio", "ubicacion", "id_usuario", "accepted_by"}
+        insert_data = {k: v for k, v in data.items() if k in allowed}
+        response = supabase.from_("notificaciones_pedidos").insert(insert_data).execute()
+        if hasattr(response, 'error') and response.error:
+            raise HTTPException(status_code=400, detail=str(response.error))
+        if not response.data:
+            raise HTTPException(status_code=400, detail="No data returned from insert")
+        return response.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/notificaciones_pedidos/{id}", response_model=NotificacionPedido)
+async def get_notificacion_pedido(id: int, current_user: UserInDB = Depends(get_current_user)):
+    try:
+        response = supabase.from_("notificaciones_pedidos").select("*").eq("id", id).single().execute()
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Notificacion no encontrada")
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/notificaciones_pedidos/{id}")
+async def delete_notificacion_pedido(id: int, current_user: UserInDB = Depends(get_current_user)):
+    try:
+        response = supabase.from_("notificaciones_pedidos").delete().eq("id", id).execute()
+        return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # Ubicaciones endpoints
@@ -316,6 +375,16 @@ class Categoria(BaseModel):
     nombre: str
     count: Optional[int] = 0
 
+# Pydantic models para Pedido
+class PedidoBase(BaseModel):
+    titulo: str
+    descripcion: str
+    precio: Optional[float] = None
+    id_categoria: int = 1
+
+class Pedido(PedidoBase):
+    id_pedidos: int
+
 # Routes for Servicios
 @app.get("/servicios")
 async def get_servicios(q: str = Query(None)):
@@ -368,6 +437,91 @@ async def get_simple_categorias():
         if hasattr(response, 'error') and response.error:
             raise HTTPException(status_code=400, detail=str(response.error))
         return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+# Routes para Pedidos
+@app.get("/pedidos")
+async def get_pedidos(id_categoria: Optional[int] = None):
+    try:
+        query = supabase.from_("Pedido").select("id_pedidos,titulo,descripcion,precio,id_usuario,Usuario(nombre)")
+        if id_categoria:
+            query = query.eq("id_categoria", id_categoria)
+        query = query.order("id_pedidos", desc=True)
+        response = query.execute()
+        return response.data or []
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/pedidos", response_model=Pedido)
+async def create_pedido(pedido: PedidoBase, current_user: UserInDB = Depends(get_current_user)):
+    try:
+        data = pedido.dict()
+        data["id_usuario"] = current_user.id_usuario
+        response = supabase.from_("Pedido").insert(data).execute()
+        if hasattr(response, 'error') and response.error:
+            raise HTTPException(status_code=400, detail=str(response.error))
+        if not response.data:
+            raise HTTPException(status_code=400, detail="No data returned from insert")
+        return response.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+
+@app.get("/pedidos/{id}")
+async def get_pedido(id: int):
+    try:
+        response = supabase.from_("Pedido").select("id_pedidos,titulo,descripcion,precio,id_usuario,id_categoria,Usuario(nombre)").eq("id_pedidos", id).single().execute()
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Pedido no encontrado")
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/pedidos/{id}")
+async def delete_pedido(id: int, current_user: UserInDB = Depends(get_current_user)):
+    try:
+        # obtener pedido
+        pedido_row = supabase.from_("Pedido").select("*").eq("id_pedidos", id).single().execute()
+        if not pedido_row.data:
+            raise HTTPException(status_code=404, detail="Pedido no encontrado")
+        pedido = pedido_row.data
+
+        # impedir que el dueño del pedido acepte su propio pedido
+        if pedido.get('id_usuario') == current_user.id_usuario:
+            raise HTTPException(status_code=403, detail="No puedes aceptar tu propio pedido")
+
+        # crear notificación para el dueño del pedido
+        notificacion = {
+            "titulo": f"Tu pedido '{pedido.get('titulo')}' fue aceptado",
+            "desc": f"El pedido fue aceptado. Descripción: {pedido.get('descripcion')}",
+            "precio": pedido.get('precio') or 0,
+            "ubicacion": "",
+            "id_usuario": pedido.get('id_usuario'),
+            "accepted_by": current_user.id_usuario
+        }
+        # Prevent duplicate notifications: check if a very similar notification already exists
+        try:
+            existing = supabase.from_("notificaciones_pedidos").select("id").eq("titulo", notificacion["titulo"]).eq("id_usuario", notificacion["id_usuario"]).eq("accepted_by", notificacion["accepted_by"]).execute()
+            if not (existing.data and len(existing.data) > 0):
+                # use the robust insertion that filters unsupported keys
+                resp_notif = supabase.from_("notificaciones_pedidos").insert({k: v for k, v in notificacion.items()}).execute()
+            else:
+                resp_notif = existing
+        except Exception as e:
+            print("Error checking/creating notification:", e)
+            # attempt insert anyway
+            resp_notif = supabase.from_("notificaciones_pedidos").insert({k: v for k, v in notificacion.items()}).execute()
+
+        # eliminar pedido
+        resp_del = supabase.from_("Pedido").delete().eq("id_pedidos", id).execute()
+        return {"status": "ok"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     

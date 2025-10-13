@@ -95,17 +95,18 @@ export const Categories: React.FC = () => {
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {categories.map((category) => (
-            <div 
-              key={category.id}
-              className={`${category.color} rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group`}
-            >
-              <div className="flex flex-col items-center text-center">
-                <h3 className="text-lg font-semibold text-gray-800 mb-2 group-hover:text-blue-600 transition-colors">
-                  {category.name}
-                </h3>
-                <span className="text-sm text-gray-500">{category.count}</span>
+            <Link key={category.id} to={`/categorias/${category.id}`} className="block">
+              <div
+                className={`${category.color} rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group`}
+              >
+                <div className="flex flex-col items-center text-center">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2 group-hover:text-blue-600 transition-colors">
+                    {category.name}
+                  </h3>
+                  <span className="text-sm text-gray-500">{category.count}</span>
+                </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </div>
