@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useParams } from "react-router-dom";
 import NuevoPedidoModal from "./NuevoPedidoModal";
 
-const API_URL = "http://localhost:8000";
+const API_URL = "https://favo-iy6h.onrender.com";
 
 type Pedido = {
   id_pedidos: number;

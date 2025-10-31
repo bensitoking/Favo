@@ -20,7 +20,7 @@ interface Props {
   onClose: () => void;
 }
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = "https://favo-iy6h.onrender.com";
 
 export const NotificacionesModal: React.FC<Props> = (props: Props) => {
   const { onClose } = props;

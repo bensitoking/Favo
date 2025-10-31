@@ -3,7 +3,7 @@ import { ServiceHistory } from './ServiceHistory';
 import { StarIcon, MapPinIcon, CalendarIcon, CheckCircleIcon } from 'lucide-react';
 import { Spinner } from '../layout/spinner';
 
-const API_URL = 'http://localhost:8000';
+const API_URL = 'https://favo-iy6h.onrender.com';
 
 export const ProfilePage = () => {
   const [user, setUser] = useState<any | null>(null);

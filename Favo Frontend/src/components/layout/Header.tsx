@@ -13,7 +13,7 @@ export const Header = ({ isLoading = false }) => {
   const [notificaciones, setNotificaciones] = useState<any[]>([]);
   const [loadingNotificaciones, setLoadingNotificaciones] = useState(false);
 
-  const API_URL = 'http://localhost:8000';
+  const API_URL = 'https://favo-iy6h.onrender.com';
 
   const isActive = (path) => location.pathname === path;
 

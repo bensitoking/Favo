@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MailIcon, LockIcon, UserIcon, AlertCircleIcon } from 'lucide-react';
-const API_URL =  'http://localhost:8000';
+const API_URL =  'https://favo-iy6h.onrender.com';
 
 export const RegisterPage = () => {
   const [email, setEmail] = useState('');

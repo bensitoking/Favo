@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 
-const API_URL = "http://localhost:8000";
+const API_URL = "https://favo-iy6h.onrender.com";
 
 type Pedido = {
   id_pedidos: number;

@@ -8,7 +8,7 @@ interface ContratarFormProps {
   destinatarioId: number;
 }
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = "https://favo-iy6h.onrender.com";
 
 export const ContratarForm: React.FC<ContratarFormProps> = ({ open, onClose, onSuccess, servicioId, destinatarioId }) => {
   const [titulo, setTitulo] = useState("");

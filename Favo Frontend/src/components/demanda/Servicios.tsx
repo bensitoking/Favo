@@ -4,7 +4,7 @@ import { ContratarForm } from "./ContratarForm";
 import { NuevoServicioModal } from "./NuevoServicioModal";
 import { useSearchParams } from "react-router-dom";
 
-const API_URL =  "http://localhost:8000";
+const API_URL =  "https://favo-iy6h.onrender.com";
 
 export const Servicios = () => {
   const [modalContratar, setModalContratar] = useState<{ open: boolean, servicioId?: number, destinatarioId?: number } | null>(null);
