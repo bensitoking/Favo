@@ -14,7 +14,6 @@ from typing import Optional
 
 app = FastAPI()
 
-# CORS configuration - CORREGIDO Y SIMPLIFICADO
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173", "http://127.0.0.1:3000", "https://favo-iy6h.onrender.com"],
@@ -32,7 +31,7 @@ async def debug_middleware(request, call_next):
         return JSONResponse(
             content={"message": "OK"},
             headers={
-                "Access-Control-Allow-Origin": "http://localhost:5173",
+                "Access-Control-Allow-Origin": "https://favo-iy6h.onrender.com",
                 "Access-Control-Allow-Credentials": "true",
                 "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
                 "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept",
