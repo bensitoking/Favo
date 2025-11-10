@@ -188,15 +188,6 @@ export const Header = ({ isLoading = false }) => {
                 <span>Mis Pedidos</span>
               </Link>
               <Link
-                to="/mensajes"
-                className={`flex items-center gap-1 px-3 py-2 rounded-md transition-colors ${
-                  isActive('/mensajes') ? 'bg-blue-50 text-blue-800 font-medium' : 'text-gray-600 hover:text-blue-800 hover:bg-blue-50'
-                }`}
-              >
-                <MessageSquareIcon size={16} />
-                <span>Mensajes</span>
-              </Link>
-              <Link
                 to="/perfil"
                 className={`flex items-center gap-1 px-3 py-2 rounded-md transition-colors ${
                   isActive('/perfil') ? 'bg-blue-50 text-blue-800 font-medium' : 'text-gray-600 hover:text-blue-800 hover:bg-blue-50'
