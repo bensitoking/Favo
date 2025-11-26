@@ -28,7 +28,11 @@ export default function CategoriaPedidos() {
     const fetchPedidos = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${API_URL}/pedidos?id_categoria=${id_categoria}`);
+        const res = await fetch(`${API_URL}/pedidos?id_categoria=${id_categoria}`, {
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (!mounted) return;
@@ -51,7 +55,11 @@ export default function CategoriaPedidos() {
     // refresh
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/pedidos?id_categoria=${id_categoria}`);
+      const res = await fetch(`${API_URL}/pedidos?id_categoria=${id_categoria}`, {
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
       if (!res.ok) throw new Error(`${res.status}`);
       const data = await res.json();
       setPedidos(data || []);

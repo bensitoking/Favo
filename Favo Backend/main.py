@@ -319,11 +319,15 @@ async def create_servicio(servicio: ServicioBase, current_user: UserInDB = Depen
 # NUEVO: mis servicios (del usuario autenticado)
 @app.get("/users/me/servicios", response_model=List[Servicio])
 async def get_my_servicios(only_active: bool = Query(False), current_user: UserInDB = Depends(get_current_user)):
-    query = supabase.from_("Servicio").select("id_servicio,titulo,descripcion,id_usuario,activo,id_categoria").eq("id_usuario", current_user.id_usuario)
-    if only_active:
-        query = query.eq("activo", True)
-    response = query.order("id_servicio", desc=True).execute()
-    return response.data or []
+    try:
+        query = supabase.from_("Servicio").select("id_servicio,titulo,descripcion,id_usuario,activo,id_categoria").eq("id_usuario", current_user.id_usuario)
+        if only_active:
+            query = query.eq("activo", True)
+        response = query.order("id_servicio", desc=True).execute()
+        return response.data or []
+    except Exception as e:
+        print(f"Error en GET /users/me/servicios: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al obtener servicios: {str(e)}")
 
 # ----- Pedidos -----
 class PedidoBase(BaseModel):
@@ -341,15 +345,21 @@ class Pedido(PedidoBase):
 @app.get("/pedidos")
 async def get_pedidos(id_categoria: Optional[int] = None, status: Optional[str] = None):
     try:
-        query = supabase.from_("Pedido").select("id_pedidos,titulo,descripcion,precio,id_usuario,id_categoria,status,accepted_by,accepted_at,Usuario(nombre)")
-        if id_categoria:
+        query = supabase.from_("Pedido").select("id_pedidos,titulo,descripcion,precio,id_usuario,id_categoria,status,accepted_by,accepted_at")
+        
+        if id_categoria and id_categoria > 0:
             query = query.eq("id_categoria", id_categoria)
-        if status:
+        
+        if status and status.strip():
             query = query.eq("status", status)
+        
         response = query.order("id_pedidos", desc=True).execute()
         return response.data or []
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error en GET /pedidos: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error al obtener pedidos: {str(e)}")
 
 @app.post("/pedidos", response_model=Pedido)
 async def create_pedido(pedido: PedidoBase, current_user: UserInDB = Depends(get_current_user)):
@@ -363,12 +373,20 @@ async def create_pedido(pedido: PedidoBase, current_user: UserInDB = Depends(get
 
 @app.get("/pedidos/{id}")
 async def get_pedido(id: int):
-    response = supabase.from_("Pedido").select(
-        "id_pedidos,titulo,descripcion,precio,id_usuario,id_categoria,status,accepted_by,accepted_at,Usuario(nombre)"
-    ).eq("id_pedidos", id).single().execute()
-    if not response.data:
-        raise HTTPException(status_code=404, detail="Pedido no encontrado")
-    return response.data
+    try:
+        response = supabase.from_("Pedido").select(
+            "id_pedidos,titulo,descripcion,precio,id_usuario,id_categoria,status,accepted_by,accepted_at"
+        ).eq("id_pedidos", id).single().execute()
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Pedido no encontrado")
+        return response.data
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error en GET /pedidos/{{id}}: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error al obtener pedido: {str(e)}")
 
 # NUEVO: aceptar pedido (proveedor distinto del dueño)
 @app.post("/pedidos/{id}/aceptar", response_model=Pedido)
@@ -430,16 +448,20 @@ async def get_my_pedidos(
     scope=owner     -> pedidos que YO creé (id_usuario = me)
     scope=accepted  -> pedidos que YO acepté (accepted_by = me)
     """
-    if scope == "owner":
-        query = supabase.from_("Pedido").select("*").eq("id_usuario", current_user.id_usuario)
-    else:
-        query = supabase.from_("Pedido").select("*").eq("accepted_by", current_user.id_usuario)
+    try:
+        if scope == "owner":
+            query = supabase.from_("Pedido").select("id_pedidos,titulo,descripcion,precio,id_usuario,id_categoria,status,accepted_by,accepted_at").eq("id_usuario", current_user.id_usuario)
+        else:
+            query = supabase.from_("Pedido").select("id_pedidos,titulo,descripcion,precio,id_usuario,id_categoria,status,accepted_by,accepted_at").eq("accepted_by", current_user.id_usuario)
 
-    if status:
-        query = query.eq("status", status)
+        if status and status.strip():
+            query = query.eq("status", status)
 
-    response = query.order("id_pedidos", desc=True).execute()
-    return response.data or []
+        response = query.order("id_pedidos", desc=True).execute()
+        return response.data or []
+    except Exception as e:
+        print(f"Error en GET /users/me/pedidos: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al obtener pedidos: {str(e)}")
 
 # BORRAR pedido (solo dueño)
 @app.delete("/pedidos/{id}")
