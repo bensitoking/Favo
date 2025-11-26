@@ -283,6 +283,96 @@ async def update_users_me(update: UserUpdate, current_user: UserInDB = Depends(g
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return user_row.data
 
+# ----- Ratings -----
+class RatingBase(BaseModel):
+    id_usuario_rated: int
+    rating: int
+    comentario: Optional[str] = None
+
+class Rating(RatingBase):
+    id_rating: int
+    id_usuario_rater: int
+    fecha_creacion: str
+
+@app.post("/ratings", response_model=Rating)
+async def create_or_update_rating(data: RatingBase, current_user: UserInDB = Depends(get_current_user)):
+    """Crear o actualizar un rating de un usuario a otro"""
+    if data.rating < 1 or data.rating > 5:
+        raise HTTPException(status_code=400, detail="Rating debe estar entre 1 y 5")
+    
+    if data.id_usuario_rated == current_user.id_usuario:
+        raise HTTPException(status_code=400, detail="No puedes calificarte a ti mismo")
+    
+    try:
+        # Verificar que el usuario rated existe
+        user_exists = supabase.from_("Usuario").select("id_usuario").eq("id_usuario", data.id_usuario_rated).single().execute()
+        if not user_exists.data:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+        # Intentar actualizar si existe, si no, crear
+        existing = supabase.from_("Rating").select("id_rating").eq("id_usuario_rated", data.id_usuario_rated).eq("id_usuario_rater", current_user.id_usuario).execute()
+        
+        if existing.data and len(existing.data) > 0:
+            # Actualizar
+            upd = supabase.from_("Rating").update({
+                "rating": data.rating,
+                "comentario": data.comentario
+            }).eq("id_rating", existing.data[0]["id_rating"]).execute()
+            return upd.data[0]
+        else:
+            # Crear
+            insert_data = {
+                "id_usuario_rated": data.id_usuario_rated,
+                "id_usuario_rater": current_user.id_usuario,
+                "rating": data.rating,
+                "comentario": data.comentario
+            }
+            res = supabase.from_("Rating").insert(insert_data).execute()
+            if hasattr(res, 'error') and res.error:
+                raise HTTPException(status_code=400, detail=str(res.error))
+            return res.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error en POST /ratings: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al crear rating: {str(e)}")
+
+@app.get("/ratings/usuario/{id_usuario}")
+async def get_ratings_usuario(id_usuario: int):
+    """Obtener todos los ratings de un usuario"""
+    try:
+        response = supabase.from_("Rating").select(
+            "id_rating,rating,comentario,fecha_creacion,Usuario!Rating_id_usuario_rater_fkey(id_usuario,nombre)"
+        ).eq("id_usuario_rated", id_usuario).order("fecha_creacion", desc=True).execute()
+        return response.data or []
+    except Exception as e:
+        print(f"Error en GET /ratings/usuario/{{id}}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al obtener ratings: {str(e)}")
+
+@app.get("/ratings/promedio/{id_usuario}")
+async def get_promedio_rating(id_usuario: int):
+    """Obtener promedio de ratings de un usuario"""
+    try:
+        response = supabase.from_("Rating").select("rating").eq("id_usuario_rated", id_usuario).execute()
+        if not response.data or len(response.data) == 0:
+            return {"promedio": 0, "cantidad": 0}
+        
+        ratings = [r["rating"] for r in response.data]
+        promedio = sum(ratings) / len(ratings)
+        return {"promedio": round(promedio, 2), "cantidad": len(ratings)}
+    except Exception as e:
+        print(f"Error en GET /ratings/promedio/{{id}}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al obtener promedio: {str(e)}")
+
+@app.get("/ratings/mi-rating/{id_usuario_rated}")
+async def get_mi_rating(id_usuario_rated: int, current_user: UserInDB = Depends(get_current_user)):
+    """Obtener mi rating a un usuario específico (si existe)"""
+    try:
+        response = supabase.from_("Rating").select("*").eq("id_usuario_rated", id_usuario_rated).eq("id_usuario_rater", current_user.id_usuario).single().execute()
+        return response.data or None
+    except Exception:
+        return None
+
 # ----- Servicios -----
 class ServicioBase(BaseModel):
     titulo: str
@@ -473,6 +563,46 @@ async def delete_pedido(id: int, current_user: UserInDB = Depends(get_current_us
         raise HTTPException(status_code=403, detail="Solo el dueño puede borrar el pedido")
     supabase.from_("Pedido").delete().eq("id_pedidos", id).execute()
     return {"status": "ok"}
+
+# ----- Búsqueda de Usuarios -----
+class UsuarioPublico(BaseModel):
+    id_usuario: int
+    nombre: Optional[str] = None
+    descripcion: Optional[str] = None
+    foto_perfil: Optional[str] = None
+    verificado: Optional[bool] = None
+
+@app.get("/usuarios/buscar", response_model=List[UsuarioPublico])
+async def buscar_usuarios(q: str = Query(...)):
+    """Buscar usuarios por nombre o descripción"""
+    try:
+        if not q or not q.strip():
+            return []
+        
+        query_str = f"%{q}%"
+        response = supabase.from_("Usuario").select(
+            "id_usuario,nombre,descripcion,foto_perfil,verificado"
+        ).or_(f"nombre.ilike.{query_str},descripcion.ilike.{query_str}").limit(10).execute()
+        return response.data or []
+    except Exception as e:
+        print(f"Error en GET /usuarios/buscar: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al buscar usuarios: {str(e)}")
+
+@app.get("/usuarios/{id_usuario}", response_model=UserProfile)
+async def get_usuario_publico(id_usuario: int):
+    """Obtener perfil público de un usuario"""
+    try:
+        response = supabase.from_("Usuario").select(
+            "id_usuario,nombre,descripcion,foto_perfil,verificado,fecha_registro,esProveedor,esDemanda,id_ubicacion,mail"
+        ).eq("id_usuario", id_usuario).single().execute()
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        return response.data
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error en GET /usuarios/{{id}}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al obtener usuario: {str(e)}")
 
 # ----- Categorías -----
 @app.get("/categorias", response_model=List[Categoria])

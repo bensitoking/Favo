@@ -6,14 +6,20 @@ export const SearchBar = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
 
-  const handleSearch = (e) => {
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate(`demanda?q=${encodeURIComponent(searchTerm)}`);
+    if (searchTerm.trim()) {
+      // Con término de búsqueda: buscar servicios Y perfiles
+      navigate(`/buscar?q=${encodeURIComponent(searchTerm)}`);
+    } else {
+      // Sin término: solo ir a servicios
+      navigate('/demanda');
+    }
   };
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleSearch(e);
+      handleSearch(e as any);
     }
   };
 
@@ -28,7 +34,7 @@ export const SearchBar = () => {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="¿Qué servicio necesitas?" 
+          placeholder="¿Qué servicio o profesional necesitas?" 
           className="w-full p-3 bg-transparent outline-none text-gray-700 placeholder-gray-400" 
         />
         {searchTerm && (
