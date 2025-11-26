@@ -345,7 +345,7 @@ class Pedido(PedidoBase):
 @app.get("/pedidos")
 async def get_pedidos(id_categoria: Optional[int] = None, status: Optional[str] = None):
     try:
-        query = supabase.from_("Pedido").select("id_pedidos,titulo,descripcion,precio,id_usuario,id_categoria,status,accepted_by,accepted_at,Usuario(id_usuario,nombre)")
+        query = supabase.from_("Pedido").select("id_pedidos,titulo,descripcion,precio,id_usuario,id_categoria,status,accepted_by,accepted_at,Usuario!Pedido_id_usuario_fkey(id_usuario,nombre)")
         
         if id_categoria and id_categoria > 0:
             query = query.eq("id_categoria", id_categoria)
@@ -375,7 +375,7 @@ async def create_pedido(pedido: PedidoBase, current_user: UserInDB = Depends(get
 async def get_pedido(id: int):
     try:
         response = supabase.from_("Pedido").select(
-            "id_pedidos,titulo,descripcion,precio,id_usuario,id_categoria,status,accepted_by,accepted_at,Usuario(id_usuario,nombre)"
+            "id_pedidos,titulo,descripcion,precio,id_usuario,id_categoria,status,accepted_by,accepted_at,Usuario!Pedido_id_usuario_fkey(id_usuario,nombre)"
         ).eq("id_pedidos", id).single().execute()
         if not response.data:
             raise HTTPException(status_code=404, detail="Pedido no encontrado")
