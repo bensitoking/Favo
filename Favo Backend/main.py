@@ -276,7 +276,7 @@ async def update_users_me(update: UserUpdate, current_user: UserInDB = Depends(g
         raise HTTPException(status_code=400, detail=str(response.error))
 
     user_row = supabase.from_("Usuario").select(
-        "id_usuario,nombre,verificado,fecha_registro,esProveedor,esDemanda,id_ubicacion,foto_perfil,mail,descripcion"
+        "id_usuario,nombre,verificado,fecha_registro,esProvedor,esDemanda,id_ubicacion,foto_perfil,mail,descripcion"
     ).eq("id_usuario", current_user.id_usuario).single().execute()
 
     if not user_row.data:
