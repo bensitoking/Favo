@@ -343,10 +343,38 @@ async def create_or_update_rating(data: RatingBase, current_user: UserInDB = Dep
 async def get_ratings_usuario(id_usuario: int):
     """Obtener todos los ratings de un usuario"""
     try:
+        # Obtener ratings sin intentar join (puede fallar si la relación no está bien)
         response = supabase.from_("rating").select(
-            "id,score,comment,created_at,Usuario(id_usuario,nombre)"
+            "id,score,comment,created_at,rater_id"
         ).eq("rated_id", id_usuario).order("created_at", desc=True).execute()
-        return response.data or []
+        
+        if not response.data:
+            return []
+        
+        # Para cada rating, obtener el usuario que hizo el rating
+        ratings_with_users = []
+        for rating in response.data:
+            rater_id = rating.get("rater_id")
+            usuario = None
+            if rater_id:
+                try:
+                    user_res = supabase.from_("Usuario").select("id_usuario,nombre").eq("id_usuario", rater_id).single().execute()
+                    if user_res.data:
+                        usuario = user_res.data
+                except:
+                    pass
+            
+            # Construir el objeto rating con usuario incluido
+            rating_obj = {
+                "id": rating.get("id"),
+                "score": rating.get("score"),
+                "comment": rating.get("comment"),
+                "created_at": rating.get("created_at"),
+                "Usuario": usuario
+            }
+            ratings_with_users.append(rating_obj)
+        
+        return ratings_with_users
     except Exception as e:
         print(f"Error en GET /ratings/usuario/{{id}}: {e}")
         import traceback
