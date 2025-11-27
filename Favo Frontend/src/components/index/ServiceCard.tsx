@@ -1,7 +1,26 @@
 import React from 'react';
-import { StarIcon, MapPinIcon, MessageSquareIcon, CalendarIcon } from 'lucide-react';
+import { StarIcon, MapPinIcon } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-export const ServiceCard = ({ provider }) => {
+type Provider = {
+  id_usuario?: number;
+  name: string;
+  rating: number;
+  location: string;
+  image: string;
+  description: string;
+  skills?: string[];
+};
+
+export const ServiceCard = ({ provider }: { provider: Provider }) => {
+  const navigate = useNavigate();
+
+  const handleContactar = () => {
+    if (provider.id_usuario) {
+      navigate(`/usuarios/${provider.id_usuario}`);
+    }
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow overflow-hidden border border-gray-100">
       <div className="p-5">
@@ -26,7 +45,7 @@ export const ServiceCard = ({ provider }) => {
             </div>
             
             <div className="mt-2 flex flex-wrap gap-2">
-              {provider.skills?.slice(0, 3).map((skill, i) => (
+              {provider.skills?.slice(0, 3).map((skill: string, i: number) => (
                 <span key={i} className="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded-full">
                   {skill}
                 </span>
@@ -42,7 +61,10 @@ export const ServiceCard = ({ provider }) => {
       
       <div className="px-5 py-4 bg-gray-50 border-t border-gray-100 flex justify-end items-center">
         <div className="flex gap-2">
-          <button className="bg-blue-900 text-white px-6 py-2 rounded hover:bg-blue-800 transition-colors">
+          <button 
+            onClick={handleContactar}
+            className="bg-blue-900 text-white px-6 py-2 rounded hover:bg-blue-800 transition-colors"
+          >
             Contactar
           </button>
           <button className="bg-orange-500 text-white px-6 py-2 rounded hover:bg-orange-600 transition-colors">

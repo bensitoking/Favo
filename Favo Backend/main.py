@@ -412,6 +412,72 @@ async def get_mi_rating(id_usuario_rated: int, current_user: UserInDB = Depends(
         traceback.print_exc()
         return None
 
+@app.get("/profesionales-destacados")
+async def get_profesionales_destacados():
+    """Obtener los 6 profesionales con mayor rating y cantidad de ratings"""
+    try:
+        # Obtener todos los ratings
+        ratings_response = supabase.from_("rating").select("rated_id, score").execute()
+        if not ratings_response.data:
+            return []
+        
+        # Calcular promedio y cantidad por usuario
+        usuario_stats = {}
+        for rating in ratings_response.data:
+            user_id = rating["rated_id"]
+            score = rating["score"]
+            
+            if user_id not in usuario_stats:
+                usuario_stats[user_id] = {"scores": [], "count": 0}
+            
+            usuario_stats[user_id]["scores"].append(score)
+            usuario_stats[user_id]["count"] += 1
+        
+        # Calcular promedio y ordenar
+        usuarios_ordenados = []
+        for user_id, stats in usuario_stats.items():
+            promedio = sum(stats["scores"]) / len(stats["scores"])
+            usuarios_ordenados.append({
+                "id_usuario": user_id,
+                "promedio": round(promedio, 2),
+                "cantidad": stats["count"]
+            })
+        
+        # Ordenar por cantidad de ratings (primero), luego por promedio
+        usuarios_ordenados.sort(key=lambda x: (-x["cantidad"], -x["promedio"]))
+        
+        # Tomar los top 6
+        top_6 = usuarios_ordenados[:6]
+        
+        if not top_6:
+            return []
+        
+        # Obtener datos de usuarios
+        resultado = []
+        for user_info in top_6:
+            user_id = user_info["id_usuario"]
+            user_response = supabase.from_("Usuario").select(
+                "id_usuario,nombre,descripcion,foto_perfil,verificado"
+            ).eq("id_usuario", user_id).single().execute()
+            
+            if user_response.data:
+                resultado.append({
+                    "id_usuario": user_response.data["id_usuario"],
+                    "nombre": user_response.data.get("nombre", "Usuario"),
+                    "descripcion": user_response.data.get("descripcion", ""),
+                    "foto_perfil": user_response.data.get("foto_perfil", "https://randomuser.me/api/portraits/lego/1.jpg"),
+                    "verificado": user_response.data.get("verificado", False),
+                    "rating": user_info["promedio"],
+                    "cantidad_ratings": user_info["cantidad"]
+                })
+        
+        return resultado
+    except Exception as e:
+        print(f"Error en GET /profesionales-destacados: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error al obtener profesionales destacados: {str(e)}")
+
 # ----- Servicios -----
 class ServicioBase(BaseModel):
     titulo: str
