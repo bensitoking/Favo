@@ -665,7 +665,7 @@ async def get_usuario_publico(id_usuario: int):
 @app.get("/categorias", response_model=List[Categoria])
 async def get_categorias():
     categories_response = supabase.from_("Categoria").select("id_categoria, nombre").execute()
-    counts_response = supabase.from_("Pedido").select("id_categoria").execute()
+    counts_response = supabase.from_("Pedido").select("id_categoria").eq("status", "pendiente").execute()
     count_map = {}
     if counts_response.data:
         for item in counts_response.data:

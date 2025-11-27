@@ -16,7 +16,27 @@ type Pedido = {
 const API_URL = "https://favo-iy6h.onrender.com";
 const token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
 
+const getCurrentUserId = async (): Promise<number | null> => {
+  try {
+    const res = await fetch(`${API_URL}/users/me/`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.id_usuario || null;
+  } catch (e) {
+    console.error('Error fetching current user:', e);
+    return null;
+  }
+};
+
 export function PedidoCard({ pedido }: { pedido: Pedido }) {
+  const [currentUserId, setCurrentUserId] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    getCurrentUserId().then(setCurrentUserId);
+  }, []);
+
   const statusInfo = (() => {
     switch (pedido.status) {
       case 'pendiente':
@@ -30,7 +50,8 @@ export function PedidoCard({ pedido }: { pedido: Pedido }) {
     }
   })();
 
-  const canComplete = pedido.status === 'en_proceso';
+  // Solo el creador del pedido (id_usuario) puede marcarlo como completado
+  const canComplete = pedido.status === 'en_proceso' && currentUserId === pedido.id_usuario;
 
   const completar = async () => {
     try {

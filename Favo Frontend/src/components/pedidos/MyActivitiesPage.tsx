@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityTabs } from './ActivityTabs';
 import { PedidoCard } from './PedidoCard';
 import { ServicioCard } from './ServicioCard';
@@ -49,13 +49,22 @@ export default function MyActivitiesPage() {
         if (tab === 'pedidos') {
           // scope: owner (mis pedidos) | accepted (los que acepté)
           const scope = pedidoView === 'mis_pedidos' ? 'owner' : 'accepted';
-          // status filter
-          const status = pedidoFilter === 'completados' ? 'completado' : undefined;
-          const res = await fetch(
-            `${API_URL}/users/me/pedidos?scope=${scope}${status ? `&status=${status}` : ''}`,
-            { headers }
-          );
-          const data = await res.json();
+          // status filter: activos = no completados (pendiente + en_proceso), completados = completado
+          const statusParam = pedidoFilter === 'completados' ? 'completado' : undefined;
+          
+          let url = `${API_URL}/users/me/pedidos?scope=${scope}`;
+          if (statusParam) {
+            url += `&status=${statusParam}`;
+          }
+          
+          const res = await fetch(url, { headers });
+          let data = await res.json();
+          
+          // Si el filtro es "activos", filtrar en cliente (no completados)
+          if (pedidoFilter === 'activos' && Array.isArray(data)) {
+            data = data.filter((p: Pedido) => p.status !== 'completado');
+          }
+          
           setPedidos(Array.isArray(data) ? data : []);
         } else {
           // servicios del usuario; solo activos por UI (lo podés cambiar)

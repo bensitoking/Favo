@@ -11,6 +11,7 @@ type Pedido = {
   descripcion: string;
   precio?: number;
   id_usuario: number;
+  status?: string;
   Usuario?: { nombre: string };
 };
 
@@ -36,7 +37,9 @@ export default function CategoriaPedidos() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (!mounted) return;
-        setPedidos(data || []);
+        // Filtrar solo pedidos pendientes (sin aceptar)
+        const pedidosPendientes = (data || []).filter((p: Pedido) => p.status !== 'en_proceso' && p.status !== 'completado');
+        setPedidos(pedidosPendientes);
       } catch (err: any) {
         console.error(err);
         setError(err.message || "Error al cargar pedidos");
@@ -62,7 +65,9 @@ export default function CategoriaPedidos() {
       });
       if (!res.ok) throw new Error(`${res.status}`);
       const data = await res.json();
-      setPedidos(data || []);
+      // Filtrar solo pedidos pendientes
+      const pedidosPendientes = (data || []).filter((p: Pedido) => p.status !== 'en_proceso' && p.status !== 'completado');
+      setPedidos(pedidosPendientes);
     } catch (err: any) {
       console.error(err);
     } finally {

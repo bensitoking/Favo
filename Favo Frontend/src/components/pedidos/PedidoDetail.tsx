@@ -42,7 +42,7 @@ export default function PedidoDetail() {
       }
     };
     fetchPedido();
-    // fetch current user id to determine ownership
+    // fetch current user id to validate ownership
     const fetchMe = async () => {
       try {
         const token = localStorage.getItem("access_token");
@@ -68,30 +68,29 @@ export default function PedidoDetail() {
   const handleAccept = async () => {
     if (!pedido) return;
     setError(null);
+    
+    // Validar que no sea el dueño del pedido
+    if (currentUserId && currentUserId === pedido.id_usuario) {
+      setError("No puedes aceptar tu propio pedido.");
+      return;
+    }
+    
     try {
-      // double-check ownership client-side
-      if (currentUserId && currentUserId === pedido.id_usuario) {
-        setError("No puedes aceptar tu propio pedido.");
-        return;
-      }
       const token = localStorage.getItem("access_token");
       if (!token) throw new Error("No autenticado");
 
-      // Delete the pedido so it no longer appears
-      const resDel = await fetch(`${API_URL}/pedidos/${pedido.id_pedidos}`, {
-        method: "DELETE",
+      // Aceptar el pedido usando el endpoint correcto
+      const resAccept = await fetch(`${API_URL}/pedidos/${pedido.id_pedidos}/aceptar`, {
+        method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
       });
 
-      if (!resDel.ok) {
-        if (resDel.status === 403) {
-          throw new Error('No puedes aceptar tu propio pedido.');
-        }
-        const err = await resDel.json().catch(() => ({}));
-        throw new Error(err.detail || `HTTP ${resDel.status}`);
+      if (!resAccept.ok) {
+        const err = await resAccept.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${resAccept.status}`);
       }
 
       // Navigate back to the category page if we have the category id
@@ -124,10 +123,20 @@ export default function PedidoDetail() {
           <div className="mt-4 font-medium">Precio: ${pedido.precio}</div>
         )}
         <div className="mt-6 flex gap-3">
-          <button onClick={handleAccept} disabled={currentUserId === pedido.id_usuario} className={`px-4 py-2 ${currentUserId === pedido.id_usuario ? 'bg-gray-300 text-gray-600' : 'bg-blue-900 text-white px-6 py-2 rounded hover:bg-blue-800 transition-colors'} rounded`}>Aceptar</button>
+          <button 
+            onClick={handleAccept} 
+            disabled={currentUserId !== null && currentUserId === pedido.id_usuario}
+            className={`px-6 py-2 rounded transition-colors ${
+              currentUserId !== null && currentUserId === pedido.id_usuario
+                ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                : 'bg-blue-900 text-white hover:bg-blue-800'
+            }`}
+          >
+            Aceptar
+          </button>
           <button onClick={handleReject} className="px-4 py-2 border rounded">Rechazar</button>
         </div>
-        {currentUserId === pedido.id_usuario && (
+        {currentUserId !== null && currentUserId === pedido.id_usuario && (
           <div className="mt-3 text-sm text-red-600">No puedes aceptar tu propio pedido.</div>
         )}
       </div>
