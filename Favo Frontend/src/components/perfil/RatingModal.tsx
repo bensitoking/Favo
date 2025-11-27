@@ -4,13 +4,12 @@ import { StarIcon, X } from 'lucide-react';
 interface RatingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (rating: number, comentario: string) => Promise<void>;
+  onSubmit: (rating: number) => Promise<void>;
   userName: string;
 }
 
 export const RatingModal: React.FC<RatingModalProps> = ({ isOpen, onClose, onSubmit, userName }) => {
   const [rating, setRating] = useState(5);
-  const [comentario, setComentario] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,9 +19,8 @@ export const RatingModal: React.FC<RatingModalProps> = ({ isOpen, onClose, onSub
     setSubmitting(true);
     setError(null);
     try {
-      await onSubmit(rating, comentario);
+      await onSubmit(rating);
       setRating(5);
-      setComentario('');
       onClose();
     } catch (err: any) {
       setError(err.message || 'Error al enviar rating');
@@ -68,19 +66,6 @@ export const RatingModal: React.FC<RatingModalProps> = ({ isOpen, onClose, onSub
             ))}
           </div>
           <p className="text-sm text-gray-600 mt-2">{rating} de 5 estrellas</p>
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium mb-2">Comentario (opcional)</label>
-          <textarea 
-            value={comentario} 
-            onChange={(e) => setComentario(e.target.value)}
-            placeholder="Comparte tu experiencia..."
-            maxLength={500}
-            className="w-full px-3 py-2 border rounded-lg resize-none"
-            rows={4}
-          />
-          <p className="text-xs text-gray-500 mt-1">{comentario.length}/500</p>
         </div>
 
         <div className="flex gap-2 justify-end">

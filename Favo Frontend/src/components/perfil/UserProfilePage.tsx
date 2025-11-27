@@ -16,10 +16,9 @@ type Usuario = {
 };
 
 type RatingInfo = {
-  id_rating: number;
-  rating: number;
-  comentario?: string;
-  fecha_creacion: string;
+  id: number;
+  score: number;
+  created_at: string;
   Usuario?: {
     id_usuario: number;
     nombre: string;
@@ -92,7 +91,7 @@ export const UserProfilePage = () => {
     if (id) fetchData();
   }, [id]);
 
-  const handleSubmitRating = async (rating: number, comentario: string) => {
+  const handleSubmitRating = async (rating: number) => {
     const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
     if (!token) {
       throw new Error('No autenticado');
@@ -107,8 +106,7 @@ export const UserProfilePage = () => {
         },
         body: JSON.stringify({
           id_usuario_rated: parseInt(id!),
-          rating,
-          comentario
+          rating
         })
       });
 
@@ -241,7 +239,7 @@ export const UserProfilePage = () => {
         ) : (
           <div className="space-y-4">
             {ratings.map((rating) => (
-              <div key={rating.id_rating} className="border-b border-gray-200 pb-4 last:border-0">
+              <div key={rating.id} className="border-b border-gray-200 pb-4 last:border-0">
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <p className="font-medium text-gray-900">{rating.Usuario?.nombre || 'Anónimo'}</p>
@@ -251,7 +249,7 @@ export const UserProfilePage = () => {
                           key={star}
                           size={14}
                           className={`${
-                            star <= rating.rating
+                            star <= rating.score
                               ? 'text-yellow-400 fill-yellow-400'
                               : 'text-gray-300'
                           }`}
@@ -260,12 +258,9 @@ export const UserProfilePage = () => {
                     </div>
                   </div>
                   <span className="text-sm text-gray-500">
-                    {new Date(rating.fecha_creacion).toLocaleDateString()}
+                    {new Date(rating.created_at).toLocaleDateString()}
                   </span>
                 </div>
-                {rating.comentario && (
-                  <p className="text-gray-700 text-sm">{rating.comentario}</p>
-                )}
               </div>
             ))}
           </div>

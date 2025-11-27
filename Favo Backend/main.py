@@ -76,7 +76,7 @@ class UserProfile(BaseModel):
     nombre: Optional[str] = None
     verificado: Optional[bool] = None
     fecha_registro: Optional[str] = None
-    esProveedor: Optional[bool] = None
+    esProvedor: Optional[bool] = None
     esDemanda: Optional[bool] = None
     id_ubicacion: Optional[int] = None
     foto_perfil: Optional[str] = None
@@ -287,12 +287,11 @@ async def update_users_me(update: UserUpdate, current_user: UserInDB = Depends(g
 class RatingBase(BaseModel):
     id_usuario_rated: int
     rating: int
-    comentario: Optional[str] = None
 
 class Rating(RatingBase):
-    id_rating: int
-    id_usuario_rater: int
-    fecha_creacion: str
+    id: int
+    rater_id: int
+    created_at: str
 
 @app.post("/ratings", response_model=Rating)
 async def create_or_update_rating(data: RatingBase, current_user: UserInDB = Depends(get_current_user)):
@@ -310,22 +309,20 @@ async def create_or_update_rating(data: RatingBase, current_user: UserInDB = Dep
             raise HTTPException(status_code=404, detail="Usuario no encontrado")
         
         # Intentar actualizar si existe, si no, crear
-        existing = supabase.from_("rating").select("id_rating").eq("id_usuario_rated", data.id_usuario_rated).eq("id_usuario_rater", current_user.id_usuario).execute()
+        existing = supabase.from_("rating").select("id").eq("rated_id", data.id_usuario_rated).eq("rater_id", current_user.id_usuario).execute()
         
         if existing.data and len(existing.data) > 0:
             # Actualizar
             upd = supabase.from_("rating").update({
-                "rating": data.rating,
-                "comentario": data.comentario
-            }).eq("id_rating", existing.data[0]["id_rating"]).execute()
+                "score": data.rating
+            }).eq("id", existing.data[0]["id"]).execute()
             return upd.data[0]
         else:
             # Crear
             insert_data = {
-                "id_usuario_rated": data.id_usuario_rated,
-                "id_usuario_rater": current_user.id_usuario,
-                "rating": data.rating,
-                "comentario": data.comentario
+                "rated_id": data.id_usuario_rated,
+                "rater_id": current_user.id_usuario,
+                "score": data.rating
             }
             res = supabase.from_("rating").insert(insert_data).execute()
             if hasattr(res, 'error') and res.error:
@@ -344,8 +341,8 @@ async def get_ratings_usuario(id_usuario: int):
     """Obtener todos los ratings de un usuario"""
     try:
         response = supabase.from_("rating").select(
-            "id_rating,rating,comentario,fecha_creacion,Usuario(id_usuario,nombre)"
-        ).eq("id_usuario_rated", id_usuario).order("fecha_creacion", desc=True).execute()
+            "id,score,created_at,Usuario(id_usuario,nombre)"
+        ).eq("rated_id", id_usuario).order("created_at", desc=True).execute()
         return response.data or []
     except Exception as e:
         print(f"Error en GET /ratings/usuario/{{id}}: {e}")
@@ -357,11 +354,11 @@ async def get_ratings_usuario(id_usuario: int):
 async def get_promedio_rating(id_usuario: int):
     """Obtener promedio de ratings de un usuario"""
     try:
-        response = supabase.from_("rating").select("rating").eq("id_usuario_rated", id_usuario).execute()
+        response = supabase.from_("rating").select("score").eq("rated_id", id_usuario).execute()
         if not response.data or len(response.data) == 0:
             return {"promedio": 0, "cantidad": 0}
         
-        ratings = [r["rating"] for r in response.data]
+        ratings = [r["score"] for r in response.data]
         promedio = sum(ratings) / len(ratings)
         return {"promedio": round(promedio, 2), "cantidad": len(ratings)}
     except Exception as e:
@@ -374,7 +371,7 @@ async def get_promedio_rating(id_usuario: int):
 async def get_mi_rating(id_usuario_rated: int, current_user: UserInDB = Depends(get_current_user)):
     """Obtener mi rating a un usuario específico (si existe)"""
     try:
-        response = supabase.from_("rating").select("*").eq("id_usuario_rated", id_usuario_rated).eq("id_usuario_rater", current_user.id_usuario).execute()
+        response = supabase.from_("rating").select("*").eq("rated_id", id_usuario_rated).eq("rater_id", current_user.id_usuario).execute()
         if not response.data or len(response.data) == 0:
             return None
         return response.data[0]
