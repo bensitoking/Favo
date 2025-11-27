@@ -287,6 +287,7 @@ async def update_users_me(update: UserUpdate, current_user: UserInDB = Depends(g
 class RatingBase(BaseModel):
     id_usuario_rated: int
     rating: int
+    comment: Optional[str] = None
 
 class Rating(RatingBase):
     id: int
@@ -314,7 +315,8 @@ async def create_or_update_rating(data: RatingBase, current_user: UserInDB = Dep
         if existing.data and len(existing.data) > 0:
             # Actualizar
             upd = supabase.from_("rating").update({
-                "score": data.rating
+                "score": data.rating,
+                "comment": data.comment
             }).eq("id", existing.data[0]["id"]).execute()
             return upd.data[0]
         else:
@@ -322,7 +324,8 @@ async def create_or_update_rating(data: RatingBase, current_user: UserInDB = Dep
             insert_data = {
                 "rated_id": data.id_usuario_rated,
                 "rater_id": current_user.id_usuario,
-                "score": data.rating
+                "score": data.rating,
+                "comment": data.comment
             }
             res = supabase.from_("rating").insert(insert_data).execute()
             if hasattr(res, 'error') and res.error:
@@ -341,7 +344,7 @@ async def get_ratings_usuario(id_usuario: int):
     """Obtener todos los ratings de un usuario"""
     try:
         response = supabase.from_("rating").select(
-            "id,score,created_at,Usuario(id_usuario,nombre)"
+            "id,score,comment,created_at,Usuario(id_usuario,nombre)"
         ).eq("rated_id", id_usuario).order("created_at", desc=True).execute()
         return response.data or []
     except Exception as e:

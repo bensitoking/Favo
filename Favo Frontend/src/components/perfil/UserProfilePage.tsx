@@ -18,6 +18,7 @@ type Usuario = {
 type RatingInfo = {
   id: number;
   score: number;
+  comment?: string;
   created_at: string;
   Usuario?: {
     id_usuario: number;
@@ -91,7 +92,7 @@ export const UserProfilePage = () => {
     if (id) fetchData();
   }, [id]);
 
-  const handleSubmitRating = async (rating: number) => {
+  const handleSubmitRating = async (rating: number, comment?: string) => {
     const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
     if (!token) {
       throw new Error('No autenticado');
@@ -106,7 +107,8 @@ export const UserProfilePage = () => {
         },
         body: JSON.stringify({
           id_usuario_rated: parseInt(id!),
-          rating
+          rating,
+          comment: comment || null
         })
       });
 
@@ -261,6 +263,9 @@ export const UserProfilePage = () => {
                     {new Date(rating.created_at).toLocaleDateString()}
                   </span>
                 </div>
+                {rating.comment && (
+                  <p className="text-gray-700 text-sm mt-2">{rating.comment}</p>
+                )}
               </div>
             ))}
           </div>
