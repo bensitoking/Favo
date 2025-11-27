@@ -579,13 +579,18 @@ async def buscar_usuarios(q: str = Query(...)):
         if not q or not q.strip():
             return []
         
-        query_str = f"%{q}%"
+        # Supabase text search - usar or_ correctamente
         response = supabase.from_("Usuario").select(
             "id_usuario,nombre,descripcion,foto_perfil,verificado"
-        ).or_(f"nombre.ilike.{query_str},descripcion.ilike.{query_str}").limit(10).execute()
-        return response.data or []
+        ).or_(f"nombre.ilike.%{q}%,descripcion.ilike.%{q}%").limit(10).execute()
+        
+        if response.data:
+            return response.data
+        return []
     except Exception as e:
         print(f"Error en GET /usuarios/buscar: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error al buscar usuarios: {str(e)}")
 
 @app.get("/usuarios/{id_usuario}", response_model=UserProfile)
@@ -594,14 +599,18 @@ async def get_usuario_publico(id_usuario: int):
     try:
         response = supabase.from_("Usuario").select(
             "id_usuario,nombre,descripcion,foto_perfil,verificado,fecha_registro,esProveedor,esDemanda,id_ubicacion,mail"
-        ).eq("id_usuario", id_usuario).single().execute()
-        if not response.data:
-            raise HTTPException(status_code=404, detail="Usuario no encontrado")
-        return response.data
+        ).eq("id_usuario", id_usuario).execute()
+        
+        if not response.data or len(response.data) == 0:
+            raise HTTPException(status_code=404, detail=f"Usuario con ID {id_usuario} no encontrado")
+        
+        return response.data[0]
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error en GET /usuarios/{{id}}: {e}")
+        print(f"Error en GET /usuarios/{{id_usuario}} (ID: {id_usuario}): {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error al obtener usuario: {str(e)}")
 
 # ----- Categorías -----
