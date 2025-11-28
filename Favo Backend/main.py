@@ -249,6 +249,38 @@ async def get_ubicacion(id: int):
         raise HTTPException(status_code=404, detail="Ubicación no encontrada")
     return response.data
 
+# ----- Crear/Actualizar Ubicación -----
+class UbicacionCreate(BaseModel):
+    provincia: Optional[str] = None
+    barrio_zona: Optional[str] = None
+    calle: Optional[str] = None
+    altura: Optional[str] = None
+    piso: Optional[int] = None
+
+@app.post("/ubicaciones")
+async def create_ubicacion(ubicacion: UbicacionCreate, current_user: UserInDB = Depends(get_current_user)):
+    """Crear una nueva ubicación para el usuario"""
+    try:
+        data = ubicacion.dict(exclude_unset=True)
+        response = supabase.from_("Ubicacion").insert(data).execute()
+        if hasattr(response, 'error') and response.error:
+            raise HTTPException(status_code=400, detail=str(response.error))
+        return response.data[0] if response.data else None
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al crear ubicación: {str(e)}")
+
+@app.put("/ubicaciones/{id}")
+async def update_ubicacion(id: int, ubicacion: UbicacionCreate, current_user: UserInDB = Depends(get_current_user)):
+    """Actualizar una ubicación existente"""
+    try:
+        data = ubicacion.dict(exclude_unset=True)
+        response = supabase.from_("Ubicacion").update(data).eq("id_ubicacion", id).execute()
+        if hasattr(response, 'error') and response.error:
+            raise HTTPException(status_code=400, detail=str(response.error))
+        return response.data[0] if response.data else None
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al actualizar ubicación: {str(e)}")
+
 # ----- Perfil (update) -----
 class UserUpdate(BaseModel):
     nombre: Optional[str] = None

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ServiceHistory } from './ServiceHistory';
-import { StarIcon, MapPinIcon, CalendarIcon, CheckCircleIcon } from 'lucide-react';
+import { StarIcon, MapPinIcon, CalendarIcon, CheckCircleIcon, MailIcon, MapIcon, AlertCircleIcon } from 'lucide-react';
 import { Spinner } from '../layout/spinner';
 
 const API_URL = 'https://favo-iy6h.onrender.com';
@@ -11,11 +11,20 @@ export const ProfilePage = () => {
   const [providedServices, setProvidedServices] = useState<any[]>([]);
   const [requestedServices, setRequestedServices] = useState<any[]>([]);
   const [editing, setEditing] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
   const [nameInput, setNameInput] = useState('');
   const [descInput, setDescInput] = useState('');
+  const [provinceInput, setProvinceInput] = useState('');
+  const [barrioInput, setBarrioInput] = useState('');
+  const [calleInput, setCalleInput] = useState('');
+  const [alturaInput, setAlturaInput] = useState('');
+  const [pisoInput, setPisoInput] = useState('');
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [locations, setLocations] = useState<any[]>([]);
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
-  const [photoBase64, setPhotoBase64] = useState<string | null>(null);
+  const [savingError, setSavingError] = useState('');
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -190,66 +199,297 @@ export const ProfilePage = () => {
               </div>
               <button onClick={() => {
                 setEditing(true);
+                setEmailInput(user?.mail || '');
                 setNameInput(user?.nombre || '');
                 setDescInput(user?.descripcion || '');
                 setSelectedLocationId(user?.id_ubicacion || null);
+                if (user?.Ubicacion) {
+                  setProvinceInput(user.Ubicacion.provincia || '');
+                  setBarrioInput(user.Ubicacion.barrio_zona || '');
+                  setCalleInput(user.Ubicacion.calle || '');
+                  setAlturaInput(user.Ubicacion.altura || '');
+                  setPisoInput(user.Ubicacion.piso || '');
+                }
               }} className="bg-blue-800 text-white px-4 py-2 rounded-lg hover:bg-blue-900">Editar perfil</button>
             </div>
-            {/* Edit form/modal - preserved in original position, only toggled by the top button */}
+            {/* Edit form/modal */}
             <div>
               {editing && (
-                <div className="mt-4 bg-gray-50 p-4 rounded">
-                  <div className="grid grid-cols-1 gap-3">
-                    <label className="text-sm">Nombre</label>
-                    <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} className="p-2 border rounded" />
-                    <label className="text-sm">Descripción</label>
-                    <textarea value={descInput} onChange={(e) => setDescInput(e.target.value)} className="p-2 border rounded" />
-                    <label className="text-sm">Ubicación</label>
-                    <select value={selectedLocationId ?? ''} onChange={(e) => setSelectedLocationId(e.target.value ? Number(e.target.value) : null)} className="p-2 border rounded">
-                      <option value="">-- Seleccionar --</option>
-                      {locations.map(loc => <option key={loc.id_ubicacion} value={loc.id_ubicacion}>{`${loc.calle || ''}${loc.altura ? ' ' + loc.altura : ''}${loc.barrio_zona ? ' - ' + loc.barrio_zona : ''}${loc.provincia ? ', ' + loc.provincia : ''}`}</option>)}
-                    </select>
-                    <label className="text-sm">Foto de perfil (opcional)</label>
-                    <input type="file" accept="image/*" onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      const reader = new FileReader();
-                      reader.onload = () => {
-                        const result = reader.result as string;
-                        // strip prefix if present
-                        const base = result.split(',')[1] || result;
-                        setPhotoBase64(base);
-                      };
-                      reader.readAsDataURL(file);
-                    }} />
-                    <div className="flex gap-2">
-                      <button onClick={async () => {
-                        // submit
-                        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-                        const body: any = {};
-                        if (nameInput) body.nombre = nameInput;
-                        if (descInput) body.descripcion = descInput;
-                        if (selectedLocationId) body.id_ubicacion = selectedLocationId;
-                        if (photoBase64) body.foto_perfil_base64 = photoBase64;
-                        try {
-                          const res = await fetch(`${API_URL}/users/me/`, {
-                            method: 'PUT',
-                            headers: {
-                              'Content-Type': 'application/json',
-                              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                            },
-                            body: JSON.stringify(body)
-                          });
-                          if (res.ok) {
-                            const updated = await res.json();
-                            setUser(updated);
-                            setEditing(false);
-                          } else {
-                            console.error('Failed to update profile', await res.text());
+                <div className="mt-6 bg-white border-2 border-blue-100 rounded-lg p-6">
+                  <h3 className="text-xl font-bold text-gray-900 mb-6">Editar tu perfil</h3>
+                  
+                  {savingError && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                      <AlertCircleIcon size={20} className="text-red-600 flex-shrink-0 mt-0.5" />
+                      <span className="text-red-700 text-sm">{savingError}</span>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Foto de perfil */}
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">Foto de perfil</label>
+                      <div className="flex gap-4 items-start">
+                        <div className="w-24 h-24 rounded-full bg-gray-100 border-2 border-gray-300 flex-shrink-0 overflow-hidden">
+                          <img 
+                            src={
+                              photoBase64 
+                                ? `data:image/jpeg;base64,${photoBase64}`
+                                : user?.foto_perfil_url || user?.foto_perfil_base64 
+                                  ? (user?.foto_perfil_url || `data:image/jpeg;base64,${user?.foto_perfil_base64}`)
+                                  : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.nombre || 'User')}&background=fff&color=1f2937`
+                            }
+                            alt="Vista previa"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                const result = reader.result as string;
+                                const base = result.split(',')[1] || result;
+                                setPhotoBase64(base);
+                                setPhotoPreview(result);
+                              };
+                              reader.readAsDataURL(file);
+                            }}
+                            className="block w-full text-sm text-gray-500 file:mr-3 file:px-4 file:py-2 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                          />
+                          <p className="text-xs text-gray-500 mt-2">PNG, JPG o GIF. Máx 5MB.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Email */}
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Correo electrónico</label>
+                      <input 
+                        type="email"
+                        value={emailInput} 
+                        onChange={(e) => setEmailInput(e.target.value)} 
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                        placeholder="tu@email.com"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Cambiar el email requiere verificación</p>
+                    </div>
+
+                    {/* Nombre */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Nombre</label>
+                      <input 
+                        type="text"
+                        value={nameInput} 
+                        onChange={(e) => setNameInput(e.target.value)} 
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                        placeholder="Tu nombre completo"
+                      />
+                    </div>
+
+                    {/* Descripción */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Descripción</label>
+                      <input 
+                        type="text"
+                        value={descInput} 
+                        onChange={(e) => setDescInput(e.target.value)} 
+                        maxLength={200}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                        placeholder="Descripción breve sobre ti"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">{descInput.length}/200</p>
+                    </div>
+
+                    {/* Sección de Ubicación */}
+                    <div className="md:col-span-2 border-t-2 border-gray-200 pt-6 mt-2">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4">Ubicación</h4>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-2">Provincia</label>
+                          <input 
+                            type="text"
+                            value={provinceInput} 
+                            onChange={(e) => setProvinceInput(e.target.value)} 
+                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                            placeholder="Ej: Buenos Aires"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-2">Barrio/Zona</label>
+                          <input 
+                            type="text"
+                            value={barrioInput} 
+                            onChange={(e) => setBarrioInput(e.target.value)} 
+                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                            placeholder="Ej: Olivos"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-2">Calle</label>
+                          <input 
+                            type="text"
+                            value={calleInput} 
+                            onChange={(e) => setCalleInput(e.target.value)} 
+                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                            placeholder="Ej: Av. Libertador"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-2">Altura</label>
+                          <input 
+                            type="text"
+                            value={alturaInput} 
+                            onChange={(e) => setAlturaInput(e.target.value)} 
+                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                            placeholder="Ej: 1234"
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-semibold text-gray-700 mb-2">Piso (opcional)</label>
+                          <input 
+                            type="text"
+                            value={pisoInput} 
+                            onChange={(e) => setPisoInput(e.target.value)} 
+                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                            placeholder="Ej: 3B"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Botones de acción */}
+                  <div className="flex gap-3 mt-8 justify-end border-t pt-6">
+                    <button 
+                      onClick={() => {
+                        setEditing(false);
+                        setSavingError('');
+                      }} 
+                      className="px-6 py-2.5 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition"
+                    >
+                      Cancelar
+                    </button>
+                    <button 
+                      onClick={() => setShowConfirmDialog(true)}
+                      className="px-6 py-2.5 bg-blue-800 text-white font-semibold rounded-lg hover:bg-blue-900 transition"
+                    >
+                      Guardar cambios
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Diálogo de confirmación */}
+              {showConfirmDialog && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                  <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4">Confirmar cambios</h3>
+                    <p className="text-gray-600 mb-6">
+                      ¿Estás seguro de que deseas guardar estos cambios en tu perfil? Esta acción no se puede deshacer.
+                    </p>
+                    <div className="flex gap-3 justify-end">
+                      <button 
+                        onClick={() => setShowConfirmDialog(false)}
+                        className="px-4 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition"
+                      >
+                        Cancelar
+                      </button>
+                      <button 
+                        onClick={async () => {
+                          setShowConfirmDialog(false);
+                          setSavingError('');
+                          try {
+                            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+                            if (!token) {
+                              setSavingError('No autenticado');
+                              return;
+                            }
+
+                            let newLocationId = selectedLocationId;
+
+                            // Crear o actualizar ubicación si hay datos
+                            if (provinceInput || barrioInput || calleInput || alturaInput || pisoInput) {
+                              const locationData = {
+                                provincia: provinceInput || null,
+                                barrio_zona: barrioInput || null,
+                                calle: calleInput || null,
+                                altura: alturaInput || null,
+                                piso: pisoInput ? parseInt(pisoInput) : null
+                              };
+
+                              let locationRes;
+                              if (selectedLocationId) {
+                                // Actualizar ubicación existente
+                                locationRes = await fetch(`${API_URL}/ubicaciones/${selectedLocationId}`, {
+                                  method: 'PUT',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${token}`
+                                  },
+                                  body: JSON.stringify(locationData)
+                                });
+                              } else {
+                                // Crear nueva ubicación
+                                locationRes = await fetch(`${API_URL}/ubicaciones`, {
+                                  method: 'POST',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${token}`
+                                  },
+                                  body: JSON.stringify(locationData)
+                                });
+                              }
+
+                              if (locationRes.ok) {
+                                const locationData = await locationRes.json();
+                                newLocationId = locationData.id_ubicacion;
+                              } else {
+                                const errorData = await locationRes.json().catch(() => ({}));
+                                setSavingError(errorData.detail || 'Error al guardar la ubicación');
+                                return;
+                              }
+                            }
+
+                            // Guardar datos del usuario
+                            const body: any = {};
+                            if (nameInput !== user?.nombre) body.nombre = nameInput;
+                            if (descInput !== user?.descripcion) body.descripcion = descInput;
+                            if (newLocationId) body.id_ubicacion = newLocationId;
+                            if (photoBase64) body.foto_perfil_base64 = photoBase64;
+
+                            const res = await fetch(`${API_URL}/users/me/`, {
+                              method: 'PUT',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                              },
+                              body: JSON.stringify(body)
+                            });
+
+                            if (res.ok) {
+                              const updated = await res.json();
+                              setUser(updated);
+                              setEditing(false);
+                              setPhotoBase64(null);
+                              setPhotoPreview(null);
+                            } else {
+                              const errorData = await res.json().catch(() => ({}));
+                              setSavingError(errorData.detail || 'Error al guardar los cambios');
+                            }
+                          } catch (err: any) {
+                            setSavingError(err.message || 'Error al guardar los cambios');
                           }
-                        } catch (err) { console.error(err) }
-                      }} className="bg-green-600 text-white px-3 py-1 rounded">Guardar</button>
-                      <button onClick={() => setEditing(false)} className="bg-gray-200 px-3 py-1 rounded">Cancelar</button>
+                        }}
+                        className="px-4 py-2 bg-blue-800 text-white font-semibold rounded-lg hover:bg-blue-900 transition"
+                      >
+                        Guardar
+                      </button>
                     </div>
                   </div>
                 </div>
