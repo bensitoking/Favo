@@ -64,8 +64,8 @@ const NotificacionCard: React.FC<CardProps> = ({ notif, onRefresh }) => {
       }
 
       if (tipo === 'rechazado') {
-        const res = await fetch(`${API_BASE}/notificaciones_respuestas/${notif.id}`, {
-          method: "DELETE",
+        const res = await fetch(`${API_BASE}/notificaciones_respuestas/${notif.id}/rechazar_contraoferta`, {
+          method: "POST",
           headers: {
             "Authorization": `Bearer ${token}`,
             "Content-Type": "application/json"
@@ -73,10 +73,12 @@ const NotificacionCard: React.FC<CardProps> = ({ notif, onRefresh }) => {
         });
 
         if (!res.ok) {
-          alert("Error al eliminar notificación");
+          const errorData = await res.json();
+          alert(`Error: ${errorData.detail || "No se pudo rechazar"}`);
           return;
         }
 
+        alert("Contraoferta rechazada");
         onRefresh();
         return;
       }

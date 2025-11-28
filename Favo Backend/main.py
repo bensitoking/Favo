@@ -709,6 +709,9 @@ async def aceptar_contraoferta(
         
         supabase.from_("notificaciones_pedidos_respuestas").insert(notif_aceptado).execute()
         
+        # Eliminar la notificación de contraoferta original
+        supabase.from_("notificaciones_pedidos_respuestas").delete().eq("id", id).execute()
+        
         return {
             "message": "Contraoferta aceptada. Pedido creado.",
             "pedido_id": pedido_id,
@@ -721,6 +724,54 @@ async def aceptar_contraoferta(
         print(f"Error aceptando contraoferta: {e}")
         import traceback
         traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+@app.post("/notificaciones_respuestas/{id}/rechazar_contraoferta")
+async def rechazar_contraoferta(
+    id: int,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Rechazar una contraoferta - Notifica al otro usuario y elimina la notificación"""
+    try:
+        # Obtener la notificación de contraoferta
+        notif = supabase.from_("notificaciones_pedidos_respuestas").select("*").eq("id", id).single().execute()
+        if not notif.data:
+            raise HTTPException(status_code=404, detail="Notificación no encontrada")
+        
+        # Verificar que es una contraoferta
+        if notif.data["tipo"] != "contraoferta":
+            raise HTTPException(status_code=400, detail="Esta notificación no es una contraoferta")
+        
+        # Verificar que el usuario es el destino
+        if notif.data["id_usuario_destino"] != current_user.id_usuario:
+            raise HTTPException(status_code=403, detail="No autorizado")
+        
+        # Obtener nombre
+        user = supabase.from_("Usuario").select("nombre").eq("id_usuario", current_user.id_usuario).single().execute()
+        nombre = user.data.get("nombre") if user.data else "Usuario"
+        
+        # Crear notificación de rechazado para el otro usuario
+        notif_rechazado = {
+            "id_usuario_origen": current_user.id_usuario,
+            "id_usuario_destino": notif.data["id_usuario_origen"],
+            "tipo": "rechazado",
+            "titulo": f"{nombre} rechazó tu contraoferta",
+            "descripcion": f"Tu contraoferta de ${notif.data.get('precio_nuevo')} fue rechazada.",
+            "precio_anterior": notif.data.get("precio_anterior"),
+            "precio_nuevo": notif.data.get("precio_nuevo"),
+            "visto": False
+        }
+        
+        supabase.from_("notificaciones_pedidos_respuestas").insert(notif_rechazado).execute()
+        
+        # Eliminar la notificación de contraoferta original
+        supabase.from_("notificaciones_pedidos_respuestas").delete().eq("id", id).execute()
+        
+        return {"message": "Contraoferta rechazada"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error rechazando contraoferta: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 # ----- Ubicacion -----
