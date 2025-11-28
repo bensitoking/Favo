@@ -214,12 +214,12 @@ export const NotificacionesModal: React.FC<Props> = (props: Props) => {
                           try {
                             const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
                             if (!token) { window.location.href = '/login'; return; }
-                            const res = await fetch(`${API_BASE}/notificaciones_respuestas/aceptado?id_notif_servicio=${n.id}`, {
+                            const res = await fetch(`${API_BASE}/notificaciones_servicios/${n.id}/aceptar`, {
                               method: 'POST',
                               headers: { 'Authorization': `Bearer ${token}` }
                             });
                             if (res.ok) {
-                              alert('Oferta aceptada');
+                              alert('Oferta aceptada. Se creó un pedido en proceso.');
                               setNotificaciones(prev => prev.filter(x => x.id !== n.id));
                             } else {
                               const err = await res.json();
@@ -241,7 +241,7 @@ export const NotificacionesModal: React.FC<Props> = (props: Props) => {
                           try {
                             const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
                             if (!token) { window.location.href = '/login'; return; }
-                            const res = await fetch(`${API_BASE}/notificaciones_respuestas/rechazado?id_notif_servicio=${n.id}`, {
+                            const res = await fetch(`${API_BASE}/notificaciones_servicios/${n.id}/rechazar`, {
                               method: 'POST',
                               headers: { 'Authorization': `Bearer ${token}` }
                             });

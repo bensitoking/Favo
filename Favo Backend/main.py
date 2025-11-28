@@ -234,12 +234,14 @@ async def aceptar_notificacion_servicio(id: int, current_user: UserInDB = Depend
         print(f"DEBUG: Aceptando notificación {id}, creando pedido...")
         
         # Crear un nuevo Pedido en estado en_proceso
+        # id_usuario debe ser quien contrató (id_usuario_origen)
+        # accepted_by debe ser quien acepta (el proveedor actual_user)
         pedido_data = {
             "titulo": notif_data.get("titulo"),
             "descripcion": notif_data.get("desc"),
             "precio": notif_data.get("precio"),
             "id_categoria": 1,  # Valor por defecto
-            "id_usuario": notif_data.get("id_usuario"),  # El que pidió el servicio
+            "id_usuario": notif_data.get("id_usuario_origen"),  # Quien hizo la solicitud (demanda)
             "accepted_by": current_user.id_usuario,  # El proveedor que lo acepta
             "accepted_at": datetime.now().isoformat(),
             "status": "en_proceso"
