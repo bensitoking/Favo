@@ -232,18 +232,37 @@ export const NotificacionesModal: React.FC<Props> = (props: Props) => {
                       </svg>
                     </button>
                   ) : (
-                    // Service notifications: delegate to parent handler if provided
-                    typeof props.onAceptar === 'function' ? (
-                      <button
-                        onClick={() => props.onAceptar && props.onAceptar(n.id)}
-                        className="bg-green-500 hover:bg-green-600 text-white rounded-full p-2 transition-colors"
-                        title="Aceptar"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      </button>
-                    ) : null
+                    // Service notifications: call the accept endpoint which creates a Pedido
+                    <button
+                      onClick={async () => {
+                        try {
+                          const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
+                          if (!token) { window.location.href = '/login'; return; }
+                          const res = await fetch(`${API_BASE}/notificaciones_servicios/${n.id}/aceptar`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                          });
+                          if (res.ok) {
+                            setNotificaciones(prev => prev.filter(x => x.id !== n.id));
+                            alert('Solicitud aceptada. Se creó un pedido en proceso.');
+                            window.location.reload();
+                          } else {
+                            const errorData = await res.json();
+                            console.error('Failed to accept notification', res.status, errorData);
+                            alert(`Error: ${errorData.detail || 'No se pudo aceptar'}`);
+                          }
+                        } catch (err) { 
+                          console.error(err);
+                          alert('Error al aceptar la solicitud');
+                        }
+                      }}
+                      className="bg-green-500 hover:bg-green-600 text-white rounded-full p-2 transition-colors"
+                      title="Aceptar"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </button>
                   )}
 
                   {/* If parent provided notifications (service-mode) keep eliminar/chat buttons */}

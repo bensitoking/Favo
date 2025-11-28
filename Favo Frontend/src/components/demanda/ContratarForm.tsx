@@ -10,7 +10,7 @@ interface ContratarFormProps {
 
 const API_BASE = "https://favo-iy6h.onrender.com";
 
-export const ContratarForm: React.FC<ContratarFormProps> = ({ open, onClose, onSuccess, servicioId, destinatarioId }) => {
+export const ContratarForm: React.FC<ContratarFormProps> = ({ open, onClose, onSuccess, destinatarioId }) => {
   const [titulo, setTitulo] = useState("");
   const [desc, setDesc] = useState("");
   const [precio, setPrecio] = useState("");
@@ -30,27 +30,51 @@ export const ContratarForm: React.FC<ContratarFormProps> = ({ open, onClose, onS
       return;
     }
     try {
-      const res = await fetch(`${API_BASE}/notificaciones_servicios`, {
+      // Crear un Pedido que ya va al proveedor (como notificación de solicitud de servicio)
+      const res = await fetch(`${API_BASE}/pedidos`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          titulo,
-          desc,
+          titulo: titulo,
+          descripcion: desc,
           precio: Number(precio),
-          ubicacion: remoto ? "Remoto" : ubicacion,
-          id_servicio: servicioId,
-          id_usuario: destinatarioId
+          id_categoria: 1, // Puedes cambiar esto según necesites
+          // Nota: id_usuario se agrega automáticamente en el backend con current_user
         })
       });
+      
       if (!res.ok) {
         const data = await res.json();
         setError(data.detail || "Error al enviar la solicitud");
         setLoading(false);
         return;
       }
+
+      await res.json();
+      
+      // Ahora crear la notificación al proveedor
+      const notifRes = await fetch(`${API_BASE}/notificaciones_servicios`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          titulo: `Solicitud de servicio: ${titulo}`,
+          desc: desc,
+          precio: Number(precio),
+          ubicacion: remoto ? "Remoto" : ubicacion,
+          id_usuario: destinatarioId  // El proveedor que ofrece el servicio
+        })
+      });
+
+      if (!notifRes.ok) {
+        console.warn("Notificación no se envió, pero el pedido se creó");
+      }
+
       setTitulo("");
       setDesc("");
       setPrecio("");
@@ -59,6 +83,7 @@ export const ContratarForm: React.FC<ContratarFormProps> = ({ open, onClose, onS
       setLoading(false);
       if (onSuccess) onSuccess();
       onClose();
+      alert("Solicitud enviada al proveedor");
     } catch (err) {
       setError("Fallo de conexión. Intenta de nuevo.");
       setLoading(false);
