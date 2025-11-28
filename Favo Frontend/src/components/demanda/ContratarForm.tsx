@@ -30,8 +30,8 @@ export const ContratarForm: React.FC<ContratarFormProps> = ({ open, onClose, onS
       return;
     }
     try {
-      // Crear un Pedido que ya va al proveedor (como notificación de solicitud de servicio)
-      const res = await fetch(`${API_BASE}/pedidos`, {
+      // Crear SOLO la notificación al proveedor (el Pedido se creará cuando acepte)
+      const res = await fetch(`${API_BASE}/notificaciones_servicios`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -39,10 +39,10 @@ export const ContratarForm: React.FC<ContratarFormProps> = ({ open, onClose, onS
         },
         body: JSON.stringify({
           titulo: titulo,
-          descripcion: desc,
+          desc: desc,
           precio: Number(precio),
-          id_categoria: 1, // Puedes cambiar esto según necesites
-          // Nota: id_usuario se agrega automáticamente en el backend con current_user
+          ubicacion: remoto ? "Remoto" : ubicacion,
+          id_usuario: destinatarioId  // El proveedor que ofrece el servicio
         })
       });
       
@@ -51,28 +51,6 @@ export const ContratarForm: React.FC<ContratarFormProps> = ({ open, onClose, onS
         setError(data.detail || "Error al enviar la solicitud");
         setLoading(false);
         return;
-      }
-
-      await res.json();
-      
-      // Ahora crear la notificación al proveedor
-      const notifRes = await fetch(`${API_BASE}/notificaciones_servicios`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          titulo: `Solicitud de servicio: ${titulo}`,
-          desc: desc,
-          precio: Number(precio),
-          ubicacion: remoto ? "Remoto" : ubicacion,
-          id_usuario: destinatarioId  // El proveedor que ofrece el servicio
-        })
-      });
-
-      if (!notifRes.ok) {
-        console.warn("Notificación no se envió, pero el pedido se creó");
       }
 
       setTitulo("");

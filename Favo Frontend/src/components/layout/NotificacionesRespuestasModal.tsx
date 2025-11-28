@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { CheckCircleIcon, XCircleIcon, MessageCircleIcon, AlertCircleIcon } from "lucide-react";
+import { CheckCircleIcon, XCircleIcon, MessageCircleIcon } from "lucide-react";
 
 interface NotificacionRespuesta {
   id: number;
@@ -15,13 +15,185 @@ interface NotificacionRespuesta {
   nombre_usuario_origen?: string;
 }
 
-interface Props {
+interface CardProps {
+  notif: NotificacionRespuesta;
+  onRefresh: () => void;
+}
+
+interface ModalProps {
   onClose: () => void;
 }
 
 const API_BASE = "https://favo-iy6h.onrender.com";
 
-export const NotificacionesRespuestasModal: React.FC<Props> = ({ onClose }) => {
+const NotificacionCard: React.FC<CardProps> = ({ notif, onRefresh }) => {
+  const [showContraoferta, setShowContraoferta] = useState(false);
+  const [nuevoPrecio, setNuevoPrecio] = useState<string>("");
+  const [comentario, setComentario] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+
+  const handleResponder = async (tipo: 'aceptado' | 'rechazado' | 'contraoferta') => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
+      if (!token) {
+        alert("No estás autenticado.");
+        return;
+      }
+
+      let url = `${API_BASE}/notificaciones_respuestas/${tipo}?id_pedido=${notif.id_pedido}`;
+
+      if (tipo === 'contraoferta') {
+        if (!nuevoPrecio || parseFloat(nuevoPrecio) <= 0) {
+          alert("El precio debe ser mayor a 0");
+          setLoading(false);
+          return;
+        }
+        url += `&precio_nuevo=${parseFloat(nuevoPrecio)}&comentario=${encodeURIComponent(comentario || "")}`;
+      }
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        alert(`Error: ${errorData.detail || "No se pudo enviar la respuesta"}`);
+        return;
+      }
+
+      alert(`¡Respuesta enviada! (${tipo})`);
+      setShowContraoferta(false);
+      setNuevoPrecio("");
+      setComentario("");
+      onRefresh();
+    } catch (err) {
+      alert("Error al enviar respuesta");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const puedeResponder = notif.tipo === 'contraoferta';
+
+  return (
+    <div className="bg-gray-50 rounded-lg p-4 flex flex-col gap-3 shadow border border-gray-100 hover:border-blue-200 transition-colors">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-2">
+          {notif.tipo === 'aceptado' && <CheckCircleIcon size={20} className="text-green-500" />}
+          {notif.tipo === 'rechazado' && <XCircleIcon size={20} className="text-red-500" />}
+          {notif.tipo === 'contraoferta' && <MessageCircleIcon size={20} className="text-blue-500" />}
+          <div className="flex-1">
+            <div className="font-semibold text-gray-800">{notif.titulo}</div>
+            {notif.nombre_usuario_origen && (
+              <div className="text-xs text-gray-500">De: {notif.nombre_usuario_origen}</div>
+            )}
+          </div>
+        </div>
+        {notif.tipo === 'aceptado' && <span className="px-2 py-1 text-xs font-semibold bg-green-100 text-green-800 rounded">Aceptado</span>}
+        {notif.tipo === 'rechazado' && <span className="px-2 py-1 text-xs font-semibold bg-red-100 text-red-800 rounded">Rechazado</span>}
+        {notif.tipo === 'contraoferta' && <span className="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded">Contraoferta</span>}
+      </div>
+
+      <div className="text-gray-700 text-sm">{notif.descripcion}</div>
+
+      {notif.tipo === 'contraoferta' && (
+        <div className="bg-white border-l-4 border-blue-500 p-3 rounded space-y-2">
+          <div className="text-sm font-semibold text-blue-900">Nueva propuesta:</div>
+          {notif.precio_anterior && notif.precio_nuevo && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm">Precio anterior:</span>
+              <span className="line-through text-gray-500">${notif.precio_anterior.toFixed(2)}</span>
+              <span className="text-sm font-semibold text-blue-600">→ ${notif.precio_nuevo.toFixed(2)}</span>
+            </div>
+          )}
+          {notif.comentario && (
+            <div className="text-sm text-gray-700 bg-blue-50 p-2 rounded mt-2">
+              <strong>Comentario:</strong> {notif.comentario}
+            </div>
+          )}
+        </div>
+      )}
+
+      {puedeResponder && (
+        <div className="border-t pt-3 space-y-2">
+          <div className="text-xs font-semibold text-gray-600">¿Cuál es tu respuesta?</div>
+          {!showContraoferta ? (
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleResponder('aceptado')}
+                disabled={loading}
+                className="flex-1 bg-green-500 hover:bg-green-600 text-white text-sm py-2 rounded transition disabled:opacity-50"
+              >
+                ✓ Aceptar
+              </button>
+              <button
+                onClick={() => handleResponder('rechazado')}
+                disabled={loading}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white text-sm py-2 rounded transition disabled:opacity-50"
+              >
+                ✗ Rechazar
+              </button>
+              <button
+                onClick={() => setShowContraoferta(true)}
+                disabled={loading}
+                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-sm py-2 rounded transition disabled:opacity-50"
+              >
+                💬 Contraoferta
+              </button>
+            </div>
+          ) : (
+            <div className="bg-blue-50 p-3 rounded space-y-2">
+              <input
+                type="number"
+                placeholder="Nuevo precio"
+                value={nuevoPrecio}
+                onChange={(e) => setNuevoPrecio(e.target.value)}
+                className="w-full px-2 py-1 border rounded text-sm"
+              />
+              <textarea
+                placeholder="Comentario (opcional)"
+                value={comentario}
+                onChange={(e) => setComentario(e.target.value)}
+                className="w-full px-2 py-1 border rounded text-sm"
+                rows={2}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleResponder('contraoferta')}
+                  disabled={loading}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm py-1 rounded transition disabled:opacity-50"
+                >
+                  Enviar Contraoferta
+                </button>
+                <button
+                  onClick={() => setShowContraoferta(false)}
+                  disabled={loading}
+                  className="flex-1 bg-gray-400 hover:bg-gray-500 text-white text-sm py-1 rounded transition disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {notif.created_at && (
+        <div className="text-xs text-gray-400">
+          📅 {new Date(notif.created_at).toLocaleDateString('es-AR')}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const NotificacionesRespuestasModal: React.FC<ModalProps> = ({ onClose }) => {
   const [notificaciones, setNotificaciones] = useState<NotificacionRespuesta[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -84,32 +256,6 @@ export const NotificacionesRespuestasModal: React.FC<Props> = ({ onClose }) => {
     fetchNotificaciones();
   }, [fetchNotificaciones]);
 
-  const getIconByTipo = (tipo: string) => {
-    switch (tipo) {
-      case 'aceptado':
-        return <CheckCircleIcon size={20} className="text-green-500" />;
-      case 'rechazado':
-        return <XCircleIcon size={20} className="text-red-500" />;
-      case 'contraoferta':
-        return <MessageCircleIcon size={20} className="text-blue-500" />;
-      default:
-        return <AlertCircleIcon size={20} className="text-gray-500" />;
-    }
-  };
-
-  const getTipoBadge = (tipo: string) => {
-    switch (tipo) {
-      case 'aceptado':
-        return <span className="px-2 py-1 text-xs font-semibold bg-green-100 text-green-800 rounded">Aceptado</span>;
-      case 'rechazado':
-        return <span className="px-2 py-1 text-xs font-semibold bg-red-100 text-red-800 rounded">Rechazado</span>;
-      case 'contraoferta':
-        return <span className="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded">Contraoferta</span>;
-      default:
-        return null;
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       {/* Overlay */}
@@ -155,49 +301,7 @@ export const NotificacionesRespuestasModal: React.FC<Props> = ({ onClose }) => {
               {notificaciones.length} respuesta{notificaciones.length !== 1 ? 's' : ''}
             </div>
             {notificaciones.map((notif) => (
-              <div
-                key={notif.id}
-                className="bg-gray-50 rounded-lg p-4 flex flex-col gap-3 shadow border border-gray-100 hover:border-blue-200 transition-colors"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    {getIconByTipo(notif.tipo)}
-                    <div className="flex-1">
-                      <div className="font-semibold text-gray-800">{notif.titulo}</div>
-                      {notif.nombre_usuario_origen && (
-                        <div className="text-xs text-gray-500">De: {notif.nombre_usuario_origen}</div>
-                      )}
-                    </div>
-                  </div>
-                  {getTipoBadge(notif.tipo)}
-                </div>
-
-                <div className="text-gray-700 text-sm">{notif.descripcion}</div>
-
-                {notif.tipo === 'contraoferta' && (
-                  <div className="bg-white border-l-4 border-blue-500 p-3 rounded space-y-2">
-                    <div className="text-sm font-semibold text-blue-900">Nueva propuesta:</div>
-                    {notif.precio_anterior && notif.precio_nuevo && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm">Precio anterior:</span>
-                        <span className="line-through text-gray-500">${notif.precio_anterior.toFixed(2)}</span>
-                        <span className="text-sm font-semibold text-blue-600">→ ${notif.precio_nuevo.toFixed(2)}</span>
-                      </div>
-                    )}
-                    {notif.comentario && (
-                      <div className="text-sm text-gray-700 bg-blue-50 p-2 rounded mt-2">
-                        <strong>Comentario:</strong> {notif.comentario}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {notif.created_at && (
-                  <div className="text-xs text-gray-400">
-                    📅 {new Date(notif.created_at).toLocaleDateString('es-AR')}
-                  </div>
-                )}
-              </div>
+              <NotificacionCard key={notif.id} notif={notif} onRefresh={fetchNotificaciones} />
             ))}
           </div>
         )}
@@ -215,3 +319,4 @@ export const NotificacionesRespuestasModal: React.FC<Props> = ({ onClose }) => {
     </div>
   );
 };
+

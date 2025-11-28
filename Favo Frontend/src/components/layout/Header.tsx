@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'; 
 import { MessageSquareIcon, ShoppingBagIcon, UserIcon, HelpCircleIcon, BellIcon } from 'lucide-react';
 import { NotificacionesModal } from './NotificacionesModal';
+import { NotificacionesRespuestasModal } from './NotificacionesRespuestasModal';
 import { Link, useLocation } from 'react-router-dom';
 import { Spinner } from './Spinner';
 
@@ -10,12 +11,13 @@ export const Header = ({ isLoading = false }) => {
   const [user, setUser] = useState<any>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [showNotificaciones, setShowNotificaciones] = useState(false);
+  const [showNotificacionesRespuestas, setShowNotificacionesRespuestas] = useState(false);
   const [notificaciones, setNotificaciones] = useState<any[]>([]);
-  const [loadingNotificaciones, setLoadingNotificaciones] = useState(false);
+  const [notificacionesRespuestas, setNotificacionesRespuestas] = useState<any[]>([]);
 
   const API_URL = 'https://favo-iy6h.onrender.com';
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path: string) => location.pathname === path;
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -67,7 +69,6 @@ export const Header = ({ isLoading = false }) => {
   // Fetch notificaciones solo cuando el modal se abre
   useEffect(() => {
     if (showNotificaciones && user) {
-      setLoadingNotificaciones(true);
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       fetch(`${API_URL}/notificaciones_servicios`, {
         headers: {
@@ -79,8 +80,7 @@ export const Header = ({ isLoading = false }) => {
           // Solo mostrar notificaciones del usuario logueado
           setNotificaciones(Array.isArray(data) ? data.filter(n => n.id_usuario === user.id_usuario) : []);
         })
-        .catch(() => setNotificaciones([]))
-        .finally(() => setLoadingNotificaciones(false));
+        .catch(() => setNotificaciones([]));
     }
   }, [showNotificaciones, user]);
 
@@ -133,6 +133,25 @@ export const Header = ({ isLoading = false }) => {
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">{notificaciones.length}</span>
               )}
             </button>
+
+            {/* Campanita de respuestas de ofertas */}
+            <button
+              className="relative text-gray-600 hover:text-green-700 focus:outline-none"
+              title="Respuestas de ofertas"
+              onClick={() => setShowNotificacionesRespuestas(true)}
+            >
+              <BellIcon size={22} />
+              {notificacionesRespuestas.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full px-1.5 py-0.5">{notificacionesRespuestas.length}</span>
+              )}
+            </button>
+
+            {showNotificacionesRespuestas && (
+              <NotificacionesRespuestasModal
+                onClose={() => setShowNotificacionesRespuestas(false)}
+              />
+            )}
+            
             {showNotificaciones && (
               <NotificacionesModal
                 notificaciones={notificaciones}
@@ -162,7 +181,7 @@ export const Header = ({ isLoading = false }) => {
                     .then(res => res.json())
                     .then(data => setNotificaciones(Array.isArray(data) ? data.filter(n => n.id_usuario === user.id_usuario) : []));
                 }}
-                onMensaje={(id) => {
+                onMensaje={() => {
                   // Aquí podrías redirigir a la pantalla de mensajes o abrir chat
                   setShowNotificaciones(false);
                 }}
