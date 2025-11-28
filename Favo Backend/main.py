@@ -544,6 +544,132 @@ async def delete_notif_respuesta(id: int, current_user: UserInDB = Depends(get_c
         print(f"Error eliminando notificación: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
+@app.post("/notificaciones_respuestas/{id}/contraoferta")
+async def enviar_contraoferta_respuesta(
+    id: int,
+    precio_nuevo: float,
+    comentario: Optional[str] = None,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Enviar una contraoferta como respuesta a una notificación"""
+    try:
+        # Obtener la notificación original
+        notif = supabase.from_("notificaciones_pedidos_respuestas").select("*").eq("id", id).single().execute()
+        if not notif.data:
+            raise HTTPException(status_code=404, detail="Notificación no encontrada")
+        
+        # Verificar que el usuario es el destino (quien recibe la oferta)
+        if notif.data["id_usuario_destino"] != current_user.id_usuario:
+            raise HTTPException(status_code=403, detail="No autorizado")
+        
+        if precio_nuevo <= 0:
+            raise HTTPException(status_code=400, detail="Precio debe ser mayor a 0")
+        
+        # Obtener nombre del usuario que envía
+        user = supabase.from_("Usuario").select("nombre").eq("id_usuario", current_user.id_usuario).single().execute()
+        nombre = user.data.get("nombre") if user.data else "Usuario"
+        
+        # Crear nueva notificación de contraoferta
+        # id_usuario_origen = quien envía la contraoferta (destino actual)
+        # id_usuario_destino = quien recibe (origen actual)
+        respuesta = {
+            "id_usuario_origen": current_user.id_usuario,
+            "id_usuario_destino": notif.data["id_usuario_origen"],
+            "tipo": "contraoferta",
+            "titulo": f"{nombre} hizo una contraoferta",
+            "descripcion": notif.data.get("descripcion", ""),
+            "precio_anterior": notif.data.get("precio_anterior"),
+            "precio_nuevo": precio_nuevo,
+            "comentario": comentario,
+            "visto": False
+        }
+        
+        res = supabase.from_("notificaciones_pedidos_respuestas").insert(respuesta).execute()
+        if hasattr(res, 'error') and res.error:
+            raise HTTPException(status_code=400, detail=str(res.error))
+        
+        return {"message": "Contraoferta enviada", "id": res.data[0]["id"]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error enviando contraoferta: {e}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+@app.post("/notificaciones_respuestas/{id}/aceptar_contraoferta")
+async def aceptar_contraoferta(
+    id: int,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Aceptar una contraoferta - Crea Pedido con nuevo precio y notifica al otro usuario"""
+    try:
+        # Obtener la notificación de contraoferta
+        notif = supabase.from_("notificaciones_pedidos_respuestas").select("*").eq("id", id).single().execute()
+        if not notif.data:
+            raise HTTPException(status_code=404, detail="Notificación no encontrada")
+        
+        # Verificar que es una contraoferta
+        if notif.data["tipo"] != "contraoferta":
+            raise HTTPException(status_code=400, detail="Esta notificación no es una contraoferta")
+        
+        # Verificar que el usuario es el destino
+        if notif.data["id_usuario_destino"] != current_user.id_usuario:
+            raise HTTPException(status_code=403, detail="No autorizado")
+        
+        precio_nuevo = notif.data.get("precio_nuevo")
+        
+        # Crear Pedido con el nuevo precio
+        pedido_data = {
+            "titulo": notif.data.get("descripcion", "Pedido"),
+            "descripcion": notif.data.get("comentario", ""),
+            "precio": precio_nuevo,
+            "id_categoria": 1,
+            "id_usuario": current_user.id_usuario,  # Quien acepta la contraoferta es el demandante
+            "accepted_by": notif.data["id_usuario_origen"],  # Quien hizo la contraoferta es el proveedor
+            "accepted_at": datetime.now().isoformat(),
+            "status": "en_proceso"
+        }
+        
+        pedido_response = supabase.from_("Pedido").insert(pedido_data).execute()
+        if hasattr(pedido_response, 'error') and pedido_response.error:
+            raise HTTPException(status_code=400, detail=f"Error al crear Pedido: {pedido_response.error}")
+        
+        if not pedido_response.data:
+            raise HTTPException(status_code=400, detail="No se pudo crear el Pedido")
+        
+        pedido_id = pedido_response.data[0]["id_pedidos"]
+        
+        # Obtener nombre
+        user = supabase.from_("Usuario").select("nombre").eq("id_usuario", current_user.id_usuario).single().execute()
+        nombre = user.data.get("nombre") if user.data else "Usuario"
+        
+        # Crear notificación de aceptado para el otro usuario
+        notif_aceptado = {
+            "id_usuario_origen": current_user.id_usuario,
+            "id_usuario_destino": notif.data["id_usuario_origen"],
+            "tipo": "aceptado",
+            "titulo": f"{nombre} aceptó tu contraoferta",
+            "descripcion": f"Tu contraoferta de ${precio_nuevo} fue aceptada. Pedido creado.",
+            "precio_anterior": notif.data.get("precio_anterior"),
+            "precio_nuevo": precio_nuevo,
+            "visto": False
+        }
+        
+        supabase.from_("notificaciones_pedidos_respuestas").insert(notif_aceptado).execute()
+        
+        return {
+            "message": "Contraoferta aceptada. Pedido creado.",
+            "pedido_id": pedido_id,
+            "precio": precio_nuevo,
+            "status": "en_proceso"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error aceptando contraoferta: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
 # ----- Ubicacion -----
 @app.get("/ubicaciones")
 async def list_ubicaciones():

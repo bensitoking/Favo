@@ -41,8 +41,29 @@ const NotificacionCard: React.FC<CardProps> = ({ notif, onRefresh }) => {
         return;
       }
 
-      // Para aceptado y rechazado, marcar como visto y eliminar
-      if (tipo === 'aceptado' || tipo === 'rechazado') {
+      // Para aceptado y rechazado, eliminar
+      if (tipo === 'aceptado') {
+        // Aceptar contraoferta - crear Pedido
+        const res = await fetch(`${API_BASE}/notificaciones_respuestas/${notif.id}/aceptar_contraoferta`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          alert(`Error: ${errorData.detail || "No se pudo aceptar"}`);
+          return;
+        }
+
+        alert("Contraoferta aceptada. Pedido creado.");
+        onRefresh();
+        return;
+      }
+
+      if (tipo === 'rechazado') {
         const res = await fetch(`${API_BASE}/notificaciones_respuestas/${notif.id}`, {
           method: "DELETE",
           headers: {
@@ -60,37 +81,34 @@ const NotificacionCard: React.FC<CardProps> = ({ notif, onRefresh }) => {
         return;
       }
 
-      // Para contraoferta, responder
-      let url = `${API_BASE}/notificaciones_respuestas/${tipo}?id_notif_servicio=${notif.id}`;
-
+      // Para contraoferta, enviar
       if (tipo === 'contraoferta') {
         if (!nuevoPrecio || parseFloat(nuevoPrecio) <= 0) {
           alert("El precio debe ser mayor a 0");
           setLoading(false);
           return;
         }
-        url += `&precio_nuevo=${parseFloat(nuevoPrecio)}&comentario=${encodeURIComponent(comentario || "")}`;
-      }
 
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
+        const res = await fetch(`${API_BASE}/notificaciones_respuestas/${notif.id}/contraoferta?precio_nuevo=${parseFloat(nuevoPrecio)}&comentario=${encodeURIComponent(comentario || "")}`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          alert(`Error: ${errorData.detail || "No se pudo enviar la contraoferta"}`);
+          return;
         }
-      });
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        alert(`Error: ${errorData.detail || "No se pudo enviar la respuesta"}`);
-        return;
+        alert(`¡Contraoferta enviada!`);
+        setShowContraoferta(false);
+        setNuevoPrecio("");
+        setComentario("");
+        onRefresh();
       }
-
-      alert(`¡Contraoferta enviada!`);
-      setShowContraoferta(false);
-      setNuevoPrecio("");
-      setComentario("");
-      onRefresh();
     } catch (err) {
       alert("Error al procesar");
       console.error(err);
