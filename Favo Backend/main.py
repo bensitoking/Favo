@@ -292,6 +292,59 @@ async def rechazar_notificacion_servicio(id: int, current_user: UserInDB = Depen
     supabase.from_("notificaciones_servicios").delete().eq("id", id).execute()
     return {"message": "Notificación rechazada"}
 
+@app.post("/notificaciones_servicios/{id}/contraoferta")
+async def contraoferta_notificacion_servicio(
+    id: int,
+    precio_nuevo: float = Query(...),
+    comentario: Optional[str] = Query(None),
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Hacer una contraoferta a una notificación de servicio"""
+    try:
+        notif = supabase.from_("notificaciones_servicios").select("*").eq("id", id).single().execute()
+        if not notif.data:
+            raise HTTPException(status_code=404, detail="Notificación no encontrada")
+        
+        # Verificar que es el proveedor (id_usuario actual)
+        if notif.data["id_usuario"] != current_user.id_usuario:
+            raise HTTPException(status_code=403, detail="No autorizado para hacer contraoferta")
+        
+        if precio_nuevo <= 0:
+            raise HTTPException(status_code=400, detail="Precio debe ser mayor a 0")
+        
+        # Obtener nombre del proveedor
+        user = supabase.from_("Usuario").select("nombre").eq("id_usuario", current_user.id_usuario).single().execute()
+        nombre = user.data.get("nombre") if user.data else "Usuario"
+        
+        # Crear notificación de contraoferta en notificaciones_pedidos_respuestas
+        respuesta = {
+            "id_usuario_origen": current_user.id_usuario,  # El proveedor que hace la contraoferta
+            "id_usuario_destino": notif.data["id_usuario_origen"],  # Quien hizo la solicitud
+            "tipo": "contraoferta",
+            "titulo": f"{nombre} hizo una contraoferta",
+            "descripcion": notif.data.get("desc", ""),
+            "precio_anterior": notif.data.get("precio"),
+            "precio_nuevo": precio_nuevo,
+            "comentario": comentario,
+            "visto": False
+        }
+        
+        res = supabase.from_("notificaciones_pedidos_respuestas").insert(respuesta).execute()
+        if hasattr(res, 'error') and res.error:
+            raise HTTPException(status_code=400, detail=str(res.error))
+        
+        # Eliminar notificación de servicio
+        supabase.from_("notificaciones_servicios").delete().eq("id", id).execute()
+        
+        return {"message": "Contraoferta enviada", "id": res.data[0]["id"]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error en contraoferta: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
 @app.get("/notificaciones_pedidos")
 async def get_notificaciones_pedidos(current_user: UserInDB = Depends(get_current_user)):
     response = supabase.from_("notificaciones_pedidos").select("*").eq("id_usuario", current_user.id_usuario).order("id", desc=True).execute()

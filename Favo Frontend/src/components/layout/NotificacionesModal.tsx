@@ -31,6 +31,10 @@ export const NotificacionesModal: React.FC<Props> = (props: Props) => {
   // Eliminación permanente: no se necesita estado local de eliminadas
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [contraofertaModal, setContraofertaModal] = useState<{ open: boolean; notifId: number | null }>({ open: false, notifId: null });
+  const [nuevoPrecio, setNuevoPrecio] = useState("");
+  const [comentarioContraoferta, setComentarioContraoferta] = useState("");
+  const [loadingContraoferta, setLoadingContraoferta] = useState(false);
   const fetchNotificaciones = useCallback(async () => {
     // Always combine service notifications (if parent provided) with pedidos fetched
     setLoading(true);
@@ -128,6 +132,47 @@ export const NotificacionesModal: React.FC<Props> = (props: Props) => {
 
   const handleRefrescar = () => {
     fetchNotificaciones();
+  };
+
+  const handleEnviarContraoferta = async () => {
+    if (!contraofertaModal.notifId) return;
+    if (!nuevoPrecio || parseFloat(nuevoPrecio) <= 0) {
+      alert("El precio debe ser mayor a 0");
+      return;
+    }
+
+    setLoadingContraoferta(true);
+    try {
+      const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
+      if (!token) {
+        window.location.href = '/login';
+        return;
+      }
+
+      const res = await fetch(
+        `${API_BASE}/notificaciones_servicios/${contraofertaModal.notifId}/contraoferta?precio_nuevo=${parseFloat(nuevoPrecio)}&comentario=${encodeURIComponent(comentarioContraoferta || "")}`,
+        {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        }
+      );
+
+      if (res.ok) {
+        alert('Contraoferta enviada');
+        setContraofertaModal({ open: false, notifId: null });
+        setNuevoPrecio("");
+        setComentarioContraoferta("");
+        setNotificaciones(prev => prev.filter(x => x.id !== contraofertaModal.notifId));
+      } else {
+        const err = await res.json();
+        alert(`Error: ${err.detail}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error');
+    } finally {
+      setLoadingContraoferta(false);
+    }
   };
 
   return (
@@ -264,7 +309,7 @@ export const NotificacionesModal: React.FC<Props> = (props: Props) => {
                       
                       {/* CONTRAOFERTA */}
                       <button
-                        onClick={() => props.onMensaje && props.onMensaje(n.id)}
+                        onClick={() => setContraofertaModal({ open: true, notifId: n.id })}
                         className="flex-1 bg-blue-500 hover:bg-blue-600 text-white rounded p-2 transition-colors text-sm"
                       >
                         💬 Contraoferta
@@ -298,6 +343,64 @@ export const NotificacionesModal: React.FC<Props> = (props: Props) => {
         )}
       </div>
 
+      {/* Modal de Contraoferta */}
+      {contraofertaModal.open && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md relative animate-fade-in">
+            <button
+              onClick={() => setContraofertaModal({ open: false, notifId: null })}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl"
+            >
+              ×
+            </button>
+            <h3 className="text-xl font-bold mb-4">Hacer Contraoferta</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block font-semibold mb-1">Nuevo Precio</label>
+                <input
+                  type="number"
+                  placeholder="Ej: 35"
+                  value={nuevoPrecio}
+                  onChange={(e) => setNuevoPrecio(e.target.value)}
+                  className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1">Comentario (Opcional)</label>
+                <textarea
+                  placeholder="Agregar un comentario sobre tu propuesta..."
+                  value={comentarioContraoferta}
+                  onChange={(e) => setComentarioContraoferta(e.target.value)}
+                  className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex gap-3 justify-end border-t pt-4 mt-4">
+                <button
+                  onClick={() => setContraofertaModal({ open: false, notifId: null })}
+                  className="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50"
+                  disabled={loadingContraoferta}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleEnviarContraoferta}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                  disabled={loadingContraoferta}
+                >
+                  {loadingContraoferta ? "Enviando..." : "Enviar Contraoferta"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         .animate-slide-in-right {
           animation: slide-in-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -305,6 +408,13 @@ export const NotificacionesModal: React.FC<Props> = (props: Props) => {
         @keyframes slide-in-right {
           0% { transform: translateX(100%); opacity: 0; }
           100% { transform: translateX(0); opacity: 1; }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.2s;
+        }
+        @keyframes fade-in {
+          from { opacity: 0; transform: scale(0.98); }
+          to { opacity: 1; transform: scale(1); }
         }
       `}</style>
     </div>
