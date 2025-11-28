@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 interface ContratarFormProps {
   open: boolean;
@@ -18,11 +18,48 @@ export const ContratarForm: React.FC<ContratarFormProps> = ({ open, onClose, onS
   const [remoto, setRemoto] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+
+  useEffect(() => {
+    // Obtener el ID del usuario actual
+    const fetchCurrentUser = async () => {
+      const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
+      if (!token) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/users/me/`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        });
+
+        if (res.ok) {
+          const user = await res.json();
+          setCurrentUserId(user.id_usuario);
+        }
+      } catch (err) {
+        console.error("Error fetching current user:", err);
+      }
+    };
+
+    if (open) {
+      fetchCurrentUser();
+    }
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    
+    if (!currentUserId) {
+      setError("No se pudo obtener tu ID de usuario. Por favor, recarga la página.");
+      setLoading(false);
+      return;
+    }
+
     const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
     if (!token) {
       setError("No estás autenticado. Por favor, inicia sesión.");
@@ -42,7 +79,8 @@ export const ContratarForm: React.FC<ContratarFormProps> = ({ open, onClose, onS
           desc: desc,
           precio: Number(precio),
           ubicacion: remoto ? "Remoto" : ubicacion,
-          id_usuario: destinatarioId  // El proveedor que ofrece el servicio
+          id_usuario: destinatarioId,  // El proveedor que ofrece el servicio
+          id_usuario_origen: currentUserId  // Quien hace la solicitud
         })
       });
       

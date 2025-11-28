@@ -146,6 +146,7 @@ class NotificacionServicioBase(BaseModel):
     precio: float
     ubicacion: str
     id_usuario: int
+    id_usuario_origen: int  # Quien hace la solicitud (demanda)
 
 class NotificacionServicio(NotificacionServicioBase):
     id: int
@@ -185,6 +186,9 @@ async def get_notificaciones_servicios(current_user: UserInDB = Depends(get_curr
 async def create_notificacion_servicio(notificacion: NotificacionServicioBase, current_user: UserInDB = Depends(get_current_user)):
     try:
         data = notificacion.dict()
+        # Validar que id_usuario_origen sea el usuario autenticado
+        if data.get("id_usuario_origen") != current_user.id_usuario:
+            raise HTTPException(status_code=403, detail="No puedes crear notificaciones en nombre de otro usuario")
         # NO agregar accepted_by ni accepted_at aquí
         # Esos se agregarán cuando el proveedor acepte la solicitud
         
