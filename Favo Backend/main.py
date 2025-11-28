@@ -348,18 +348,21 @@ class NotificacionRespuesta(NotificacionRespuestaBase):
 async def get_notificaciones_respuestas(current_user: UserInDB = Depends(get_current_user)):
     """Obtener notificaciones de respuestas de pedidos para el usuario actual"""
     try:
+        # Obtener notificaciones sin JOIN (evitar ambigüedad con Supabase)
         response = supabase.from_("notificaciones_pedidos_respuestas").select(
-            "id,id_pedido,id_usuario_origen,id_usuario_destino,tipo,titulo,descripcion,precio_anterior,precio_nuevo,comentario,visto,created_at,Usuario(nombre)"
+            "id,id_pedido,id_usuario_origen,id_usuario_destino,tipo,titulo,descripcion,precio_anterior,precio_nuevo,comentario,visto,created_at"
         ).eq("id_usuario_destino", current_user.id_usuario).order("created_at", desc=True).execute()
         
         data = response.data or []
         
-        # Enriquecer con nombre del usuario que envió
+        # Enriquecer con nombre del usuario que envió (hacer query manual)
         for notif in data:
-            if notif.get("Usuario") and isinstance(notif["Usuario"], dict):
-                notif["nombre_usuario_origen"] = notif["Usuario"].get("nombre")
-            elif isinstance(notif.get("Usuario"), list) and len(notif["Usuario"]) > 0:
-                notif["nombre_usuario_origen"] = notif["Usuario"][0].get("nombre")
+            try:
+                usuario_response = supabase.from_("Usuario").select("nombre").eq("id_usuario", notif.get("id_usuario_origen")).single().execute()
+                if usuario_response.data:
+                    notif["nombre_usuario_origen"] = usuario_response.data.get("nombre")
+            except:
+                notif["nombre_usuario_origen"] = f"Usuario {notif.get('id_usuario_origen')}"
         
         return data
     except Exception as e:
@@ -370,25 +373,29 @@ async def get_notificaciones_respuestas(current_user: UserInDB = Depends(get_cur
 async def crear_notif_aceptado(id_pedido: int, current_user: UserInDB = Depends(get_current_user)):
     """Crear notificación de que fue aceptado - Se envía al otro usuario de la negociación"""
     try:
+        print(f"DEBUG: Iniciando crear_notif_aceptado para pedido {id_pedido}, usuario {current_user.id_usuario}")
+        
         # Obtener el pedido
         pedido_response = supabase.from_("Pedido").select("*").eq("id_pedidos", id_pedido).single().execute()
+        print(f"DEBUG: Respuesta del pedido: {pedido_response}")
+        
         if not pedido_response.data:
             raise HTTPException(status_code=404, detail="Pedido no encontrado")
         
         pedido = pedido_response.data
+        print(f"DEBUG: Pedido encontrado: {pedido}")
         
         # Determinar quién envía (proveedor o demanda) y quién recibe
-        # Si current_user es el dueño, recibe el proveedor (accepted_by)
-        # Si current_user es el proveedor, recibe el dueño
-        
         if pedido.get("id_usuario") == current_user.id_usuario:
             # Usuario actual es el DUEÑO (demanda)
             id_usuario_destino = pedido.get("accepted_by")
+            print(f"DEBUG: Usuario actual es DUEÑO, enviando a proveedor {id_usuario_destino}")
             if not id_usuario_destino:
                 raise HTTPException(status_code=400, detail="No hay proveedor para enviar la notificación")
         elif pedido.get("accepted_by") == current_user.id_usuario:
             # Usuario actual es el PROVEEDOR
             id_usuario_destino = pedido.get("id_usuario")
+            print(f"DEBUG: Usuario actual es PROVEEDOR, enviando a dueño {id_usuario_destino}")
         else:
             raise HTTPException(status_code=403, detail="No estás involucrado en este pedido")
         
@@ -407,23 +414,32 @@ async def crear_notif_aceptado(id_pedido: int, current_user: UserInDB = Depends(
             "precio_anterior": pedido.get("precio")
         }
         
+        print(f"DEBUG: Datos a insertar: {notif_data}")
+        
         response = supabase.from_("notificaciones_pedidos_respuestas").insert(notif_data).execute()
+        print(f"DEBUG: Respuesta del insert: {response}")
+        print(f"DEBUG: Response data: {response.data}")
+        print(f"DEBUG: Response error: {response.error if hasattr(response, 'error') else 'Sin error'}")
+        
         if hasattr(response, 'error') and response.error:
             print(f"Error en insert: {response.error}")
             raise HTTPException(status_code=400, detail=str(response.error))
         
-        # Eliminar notificación de servicio si existe (solo cuando ambos aceptan)
-        # Esta notificación de respuesta indica aceptación total, así que eliminamos la de servicio
+        # Eliminar notificación de servicio si existe
         try:
             supabase.from_("notificaciones_servicios").delete().eq("titulo", pedido.get("titulo")).execute()
+            print(f"DEBUG: Notificación de servicio eliminada")
         except:
             pass  # Si no existe, ignorar
         
+        print(f"DEBUG: Notificación guardada exitosamente")
         return response.data[0] if response.data else notif_data
     except HTTPException:
         raise
     except Exception as e:
         print(f"Error creando notif aceptado: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @app.post("/notificaciones_respuestas/rechazado")
