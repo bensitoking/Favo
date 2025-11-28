@@ -326,7 +326,12 @@ async def update_users_me(update: UserUpdate, current_user: UserInDB = Depends(g
     if update.id_ubicacion is not None:
         update_data["id_ubicacion"] = update.id_ubicacion
     if update.foto_perfil_base64 is not None:
-        update_data["foto_perfil"] = update.foto_perfil_base64
+        # Guardar la foto como string base64 (sin prefijo data:image/...)
+        foto_str = update.foto_perfil_base64
+        if foto_str.startswith('data:'):
+            # Remover el prefijo si existe
+            foto_str = foto_str.split(',')[1] if ',' in foto_str else foto_str
+        update_data["foto_perfil"] = foto_str
 
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -341,7 +346,14 @@ async def update_users_me(update: UserUpdate, current_user: UserInDB = Depends(g
 
     if not user_row.data:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    return user_row.data
+    
+    # Normalizar la respuesta: asegurar que todos los campos están presentes
+    result = user_row.data
+    result["foto_perfil"] = result.get("foto_perfil") or None
+    result["descripcion"] = result.get("descripcion") or ""
+    result["nombre"] = result.get("nombre") or "Usuario"
+    
+    return result
 
 # ----- Ratings -----
 class RatingBase(BaseModel):
@@ -850,9 +862,23 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     access_token = create_access_token(data={"sub": user.mail}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.get("/users/me/", response_model=UserInDB)
+@app.get("/users/me/", response_model=UserProfile)
 async def read_users_me(current_user: UserInDB = Depends(get_current_user)):
-    return current_user
+    # Fetch complete user profile with all fields
+    user_row = supabase.from_("Usuario").select(
+        "id_usuario,nombre,verificado,fecha_registro,esProvedor,esDemanda,id_ubicacion,foto_perfil,mail,descripcion"
+    ).eq("id_usuario", current_user.id_usuario).single().execute()
+    
+    if not user_row.data:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    # Normalizar la respuesta
+    result = user_row.data
+    result["foto_perfil"] = result.get("foto_perfil") or None
+    result["descripcion"] = result.get("descripcion") or ""
+    result["nombre"] = result.get("nombre") or "Usuario"
+    
+    return result
 
 # ----- Salud / CORS -----
 @app.get("/health")

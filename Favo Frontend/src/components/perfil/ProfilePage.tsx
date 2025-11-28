@@ -5,6 +5,36 @@ import { Spinner } from '../layout/spinner';
 
 const API_URL = 'https://favo-iy6h.onrender.com';
 
+const normalizeUserData = async (currentUser: any) => {
+  if (!currentUser) return null;
+  
+  // Normalizar descripción
+  currentUser.descripcion = currentUser.descripcion || currentUser.description || currentUser.desc || currentUser.bio || currentUser.about || currentUser.descripcion_text || '';
+  
+  // Normalizar foto: el backend puede devolver foto_perfil (base64 sin prefijo)
+  // o foto_perfil_base64. Asegurar que foto_perfil_base64 tenga el valor correcto
+  if (currentUser.foto_perfil && !currentUser.foto_perfil_base64) {
+    currentUser.foto_perfil_base64 = currentUser.foto_perfil;
+  }
+  
+  // Obtener ubicación si existe
+  if (currentUser.id_ubicacion) {
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const headers: any = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const ubRes = await fetch(`${API_URL}/ubicaciones/${currentUser.id_ubicacion}`, { headers });
+      if (ubRes.ok) {
+        currentUser.Ubicacion = await ubRes.json();
+      }
+    } catch (e) {
+      console.error('Error fetching location:', e);
+    }
+  }
+  
+  return currentUser;
+};
+
 export const ProfilePage = () => {
   const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,6 +56,63 @@ export const ProfilePage = () => {
   const [savingError, setSavingError] = useState('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
+  const refreshUserData = async () => {
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (!token) return;
+
+      const res = await fetch(`${API_URL}/users/me/`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (res.ok) {
+        let currentUser = await res.json();
+        currentUser = await normalizeUserData(currentUser);
+        setUser(currentUser);
+        
+        // También refrescar los servicios/pedidos si es necesario
+        const [servRes, pedRes] = await Promise.all([
+          fetch(`${API_URL}/servicios`),
+          fetch(`${API_URL}/pedidos`).catch(() => ({ ok: false }))
+        ]);
+
+        if (servRes && servRes.ok) {
+          const servicios = await servRes.json();
+          if (currentUser && Array.isArray(servicios)) {
+            const provided = servicios.filter((s: any) => s.id_usuario === currentUser.id_usuario).map((s: any) => ({
+              id: s.id_servicio,
+              service: s.titulo,
+              client: s.Usuario?.nombre || 'Desconocido',
+              date: s.created_at ? new Date(s.created_at).toLocaleDateString() : '—',
+              status: 'Publicado',
+              amount: s.precio ? `$${s.precio}` : '—',
+              rating: s.rating || undefined
+            }));
+            setProvidedServices(provided);
+          }
+        }
+
+        if (pedRes && (pedRes as Response).ok) {
+          const pedidos = await (pedRes as Response).json();
+          if (currentUser && Array.isArray(pedidos)) {
+            const requested = pedidos.filter((p: any) => p.id_usuario === currentUser.id_usuario).map((p: any) => ({
+              id: p.id_pedidos || p.id,
+              service: p.titulo || 'Pedido',
+              provider: p.Proveedor?.nombre || p.proveedor_nombre || 'Desconocido',
+              date: p.fecha ? new Date(p.fecha).toLocaleDateString() : (p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'),
+              status: p.estado || 'Pendiente',
+              amount: p.precio ? `$${p.precio}` : '—',
+              rating: p.rating || undefined
+            }));
+            setRequestedServices(requested);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing profile data:', error);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -41,7 +128,7 @@ export const ProfilePage = () => {
           if (res.ok) currentUser = await res.json();
         }
 
-        // If no token or failed, try unauthenticated call (some setups return public profile)
+        // If no token or failed, try unauthenticated call
         if (!currentUser) {
           try {
             const resPublic = await fetch(`${API_URL}/users/me/`);
@@ -51,49 +138,10 @@ export const ProfilePage = () => {
           }
         }
 
-        // Normalize fields that may come under different names/formats
+        // Normalize and fetch related data
         if (currentUser) {
-          // description may come as descripcion or description
-          currentUser.descripcion = currentUser.descripcion || currentUser.description || currentUser.desc || currentUser.bio || currentUser.about || currentUser.descripcion_text;
-          // foto may be provided as base64, url, or bytes. Prefer an explicit URL field if present
-          if (currentUser.foto_perfil_url) {
-            currentUser.foto_perfil_url = currentUser.foto_perfil_url;
-          } else if (currentUser.foto_perfil_base64) {
-            currentUser.foto_perfil_base64 = currentUser.foto_perfil_base64;
-          } else if (currentUser.foto_perfil && typeof currentUser.foto_perfil === 'string') {
-            // if backend already returns a base64 string without prefix
-            currentUser.foto_perfil_base64 = currentUser.foto_perfil;
-          } else if (currentUser.foto_perfil && currentUser.foto_perfil.data) {
-            // sometimes binary is returned as object with data
-            try {
-              const b64 = Buffer.from(currentUser.foto_perfil.data).toString('base64');
-              currentUser.foto_perfil_base64 = b64;
-            } catch (e) {
-              // ignore
-            }
-          }
-
+          currentUser = await normalizeUserData(currentUser);
           setUser(currentUser);
-
-          // If user has a foreign key to Ubicacion, try to fetch it (pass token if available)
-          if (currentUser.id_ubicacion) {
-            try {
-              const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-              const headers: any = {};
-              if (token) headers['Authorization'] = `Bearer ${token}`;
-              const ubRes = await fetch(`${API_URL}/ubicaciones/${currentUser.id_ubicacion}`, { headers });
-              if (ubRes.ok) {
-                const ub = await ubRes.json();
-                // attach to user for convenience
-                currentUser.Ubicacion = ub;
-                setUser({ ...currentUser });
-                // preselect location for editing
-                setSelectedLocationId(currentUser.id_ubicacion || null);
-              }
-            } catch (e) {
-              // ignore if backend doesn't have this endpoint
-            }
-          }
         }
 
         // Fetch servicios and pedidos and map to our history components
@@ -459,8 +507,8 @@ export const ProfilePage = () => {
 
                             // Guardar datos del usuario
                             const body: any = {};
-                            if (nameInput !== user?.nombre) body.nombre = nameInput;
-                            if (descInput !== user?.descripcion) body.descripcion = descInput;
+                            body.nombre = nameInput;
+                            body.descripcion = descInput;
                             if (newLocationId) body.id_ubicacion = newLocationId;
                             if (photoBase64) body.foto_perfil_base64 = photoBase64;
 
@@ -474,11 +522,13 @@ export const ProfilePage = () => {
                             });
 
                             if (res.ok) {
-                              const updated = await res.json();
-                              setUser(updated);
+                              // Refrescar todos los datos del usuario
+                              await refreshUserData();
                               setEditing(false);
                               setPhotoBase64(null);
-                              setPhotoPreview(null);
+                              setShowConfirmDialog(false);
+                              // Limpiar los campos de ubicación también
+                              setSelectedLocationId(user?.id_ubicacion || null);
                             } else {
                               const errorData = await res.json().catch(() => ({}));
                               setSavingError(errorData.detail || 'Error al guardar los cambios');
