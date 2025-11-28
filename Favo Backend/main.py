@@ -149,6 +149,9 @@ class NotificacionServicioBase(BaseModel):
 
 class NotificacionServicio(NotificacionServicioBase):
     id: int
+    accepted_by: Optional[int] = None
+    accepted_at: Optional[str] = None
+    aceptado_por_nombre: Optional[str] = None
 
 class NotificacionPedidoBase(BaseModel):
     titulo: str
@@ -158,14 +161,25 @@ class NotificacionPedidoBase(BaseModel):
     id_usuario: int
     id_categoria: Optional[int] = None
     accepted_by: Optional[int] = None
+    accepted_at: Optional[str] = None
 
 class NotificacionPedido(NotificacionPedidoBase):
     id: int
+    aceptado_por_nombre: Optional[str] = None
 
 @app.get("/notificaciones_servicios")
 async def get_notificaciones_servicios(current_user: UserInDB = Depends(get_current_user)):
     response = supabase.from_("notificaciones_servicios").select("*").eq("id_usuario", current_user.id_usuario).execute()
-    return response.data or []
+    data = response.data or []
+    
+    # Enriquecer con nombre de quien aceptó
+    for notif in data:
+        if notif.get("accepted_by"):
+            user_response = supabase.from_("Usuario").select("nombre").eq("id_usuario", notif["accepted_by"]).single().execute()
+            if user_response.data:
+                notif["aceptado_por_nombre"] = user_response.data.get("nombre")
+    
+    return data
 
 @app.post("/notificaciones_servicios", response_model=NotificacionServicio)
 async def create_notificacion_servicio(notificacion: NotificacionServicioBase, current_user: UserInDB = Depends(get_current_user)):
@@ -201,8 +215,14 @@ async def aceptar_notificacion_servicio(id: int, current_user: UserInDB = Depend
     notif = supabase.from_("notificaciones_servicios").select("*").eq("id", id).single().execute()
     if not notif.data or notif.data["id_usuario"] != current_user.id_usuario:
         raise HTTPException(status_code=403, detail="No autorizado para aceptar esta notificación")
-    supabase.from_("notificaciones_servicios").delete().eq("id", id).execute()
-    return {"message": "Notificación aceptada"}
+    
+    # Actualizar notificación con quien aceptó y cuándo
+    update_response = supabase.from_("notificaciones_servicios").update({
+        "accepted_by": current_user.id_usuario,
+        "accepted_at": datetime.now().isoformat()
+    }).eq("id", id).execute()
+    
+    return {"message": "Notificación aceptada", "data": update_response.data}
 
 @app.post("/notificaciones_servicios/{id}/rechazar")
 async def rechazar_notificacion_servicio(id: int, current_user: UserInDB = Depends(get_current_user)):
@@ -215,7 +235,16 @@ async def rechazar_notificacion_servicio(id: int, current_user: UserInDB = Depen
 @app.get("/notificaciones_pedidos")
 async def get_notificaciones_pedidos(current_user: UserInDB = Depends(get_current_user)):
     response = supabase.from_("notificaciones_pedidos").select("*").eq("id_usuario", current_user.id_usuario).order("id", desc=True).execute()
-    return response.data or []
+    data = response.data or []
+    
+    # Enriquecer con nombre de quien aceptó
+    for notif in data:
+        if notif.get("accepted_by"):
+            user_response = supabase.from_("Usuario").select("nombre").eq("id_usuario", notif["accepted_by"]).single().execute()
+            if user_response.data:
+                notif["aceptado_por_nombre"] = user_response.data.get("nombre")
+    
+    return data
 
 @app.post("/notificaciones_pedidos", response_model=NotificacionPedido)
 async def create_notificacion_pedido(notificacion: NotificacionPedidoBase, current_user: UserInDB = Depends(get_current_user)):
@@ -236,8 +265,12 @@ async def get_notificacion_pedido(id: int, current_user: UserInDB = Depends(get_
 
 @app.delete("/notificaciones_pedidos/{id}")
 async def delete_notificacion_pedido(id: int, current_user: UserInDB = Depends(get_current_user)):
-    supabase.from_("notificaciones_pedidos").delete().eq("id", id).execute()
-    return {"status": "ok"}
+    # Actualizar notificación con quien aceptó (en lugar de deletear)
+    update_response = supabase.from_("notificaciones_pedidos").update({
+        "accepted_by": current_user.id_usuario,
+        "accepted_at": datetime.now().isoformat()
+    }).eq("id", id).execute()
+    return {"status": "ok", "data": update_response.data}
 
 # ----- Ubicacion -----
 @app.get("/ubicaciones")

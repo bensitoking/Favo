@@ -8,6 +8,9 @@ interface Notificacion {
   ubicacion: string;
   id_usuario: number;
   created_at?: string;
+  accepted_by?: number | null;
+  accepted_at?: string | null;
+  aceptado_por_nombre?: string;
   source?: 'servicio' | 'pedido';
 }
 
@@ -191,6 +194,11 @@ export const NotificacionesModal: React.FC<Props> = (props: Props) => {
                 <div className="text-xs text-gray-500">
                   📍 {n.ubicacion} | 💰 ${n.precio.toLocaleString()}
                 </div>
+                {n.aceptado_por_nombre && (
+                  <div className="text-xs text-green-600 font-semibold">
+                    ✅ Aceptado por: {n.aceptado_por_nombre}
+                  </div>
+                )}
                 {n.created_at && (
                   <div className="text-xs text-gray-400">
                     📅 {new Date(n.created_at).toLocaleDateString()}

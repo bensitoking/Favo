@@ -13,6 +13,7 @@ type Pedido = {
   status: 'pendiente' | 'en_proceso' | 'completado';
   accepted_by?: number | null;
   accepted_at?: string | null;
+  aceptado_por_nombre?: string;
 };
 
 type Servicio = {

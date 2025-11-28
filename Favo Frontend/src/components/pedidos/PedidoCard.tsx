@@ -11,6 +11,7 @@ type Pedido = {
   status: 'pendiente' | 'en_proceso' | 'completado';
   accepted_by?: number | null;
   accepted_at?: string | null;
+  aceptado_por_nombre?: string;
 };
 
 const API_URL = "https://favo-iy6h.onrender.com";
@@ -90,6 +91,12 @@ export function PedidoCard({ pedido }: { pedido: Pedido }) {
           <div className="flex items-center gap-1">
             <CalendarIcon size={16} />
             <span>Aceptado el {new Date(pedido.accepted_at).toLocaleString('es-AR')}</span>
+          </div>
+        )}
+        {pedido.aceptado_por_nombre && (
+          <div className="flex items-center gap-1 bg-green-50 px-2 py-1 rounded">
+            <span>✅</span>
+            <span className="font-semibold text-green-700">Por: {pedido.aceptado_por_nombre}</span>
           </div>
         )}
         <div className="flex items-center gap-1">
