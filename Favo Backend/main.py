@@ -277,6 +277,192 @@ async def delete_notificacion_pedido(id: int, current_user: UserInDB = Depends(g
     }).eq("id", id).execute()
     return {"status": "ok", "data": update_response.data}
 
+# ----- Notificaciones de Respuestas de Pedidos (Aceptado/Rechazado/Contraoferta) -----
+class NotificacionRespuestaBase(BaseModel):
+    id_pedido: int
+    tipo: str  # "aceptado", "rechazado", "contraoferta"
+    titulo: str
+    descripcion: Optional[str] = None
+    precio_anterior: Optional[float] = None
+    precio_nuevo: Optional[float] = None
+    comentario: Optional[str] = None
+
+class NotificacionRespuesta(NotificacionRespuestaBase):
+    id: int
+    id_usuario_origen: int
+    id_usuario_destino: int
+    visto: bool = False
+    created_at: str
+    nombre_usuario_origen: Optional[str] = None
+
+@app.get("/notificaciones_respuestas")
+async def get_notificaciones_respuestas(current_user: UserInDB = Depends(get_current_user)):
+    """Obtener notificaciones de respuestas de pedidos para el usuario actual"""
+    try:
+        response = supabase.from_("notificaciones_pedidos_respuestas").select(
+            "id,id_pedido,id_usuario_origen,id_usuario_destino,tipo,titulo,descripcion,precio_anterior,precio_nuevo,comentario,visto,created_at,Usuario(nombre)"
+        ).eq("id_usuario_destino", current_user.id_usuario).order("created_at", desc=True).execute()
+        
+        data = response.data or []
+        
+        # Enriquecer con nombre del usuario que envió
+        for notif in data:
+            if notif.get("Usuario") and isinstance(notif["Usuario"], dict):
+                notif["nombre_usuario_origen"] = notif["Usuario"].get("nombre")
+            elif isinstance(notif.get("Usuario"), list) and len(notif["Usuario"]) > 0:
+                notif["nombre_usuario_origen"] = notif["Usuario"][0].get("nombre")
+        
+        return data
+    except Exception as e:
+        print(f"Error en GET /notificaciones_respuestas: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al obtener notificaciones: {str(e)}")
+
+@app.post("/notificaciones_respuestas/aceptado")
+async def crear_notif_aceptado(id_pedido: int, current_user: UserInDB = Depends(get_current_user)):
+    """Crear notificación de que el pedido fue aceptado"""
+    try:
+        # Obtener el pedido
+        pedido_response = supabase.from_("Pedido").select("*").eq("id_pedidos", id_pedido).single().execute()
+        if not pedido_response.data:
+            raise HTTPException(status_code=404, detail="Pedido no encontrado")
+        
+        pedido = pedido_response.data
+        if pedido.get("id_usuario") == current_user.id_usuario:
+            raise HTTPException(status_code=400, detail="No puedes aceptar tu propio pedido")
+        
+        # Crear notificación
+        notif_data = {
+            "id_pedido": id_pedido,
+            "id_usuario_origen": current_user.id_usuario,
+            "id_usuario_destino": pedido.get("id_usuario"),
+            "tipo": "aceptado",
+            "titulo": f"Tu pedido '{pedido.get('titulo')}' fue aceptado",
+            "descripcion": f"Un proveedor aceptó tu pedido. Descripción: {pedido.get('descripcion')}",
+            "precio_anterior": pedido.get("precio")
+        }
+        
+        response = supabase.from_("notificaciones_pedidos_respuestas").insert(notif_data).execute()
+        if hasattr(response, 'error') and response.error:
+            raise HTTPException(status_code=400, detail=str(response.error))
+        
+        return response.data[0] if response.data else notif_data
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error creando notif aceptado: {e}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+@app.post("/notificaciones_respuestas/rechazado")
+async def crear_notif_rechazado(id_pedido: int, current_user: UserInDB = Depends(get_current_user)):
+    """Crear notificación de que la oferta fue rechazada y revertir pedido a pendiente"""
+    try:
+        # Obtener el pedido
+        pedido_response = supabase.from_("Pedido").select("*").eq("id_pedidos", id_pedido).single().execute()
+        if not pedido_response.data:
+            raise HTTPException(status_code=404, detail="Pedido no encontrado")
+        
+        pedido = pedido_response.data
+        accepted_by = pedido.get("accepted_by")
+        
+        if not accepted_by:
+            raise HTTPException(status_code=400, detail="El pedido no tiene una oferta aceptada")
+        
+        # Obtener nombre del proveedor que la aceptó
+        proveedor = supabase.from_("Usuario").select("nombre").eq("id_usuario", accepted_by).single().execute()
+        proveedor_nombre = proveedor.data.get("nombre") if proveedor.data else "Proveedor"
+        
+        # Crear notificación para el proveedor
+        notif_data = {
+            "id_pedido": id_pedido,
+            "id_usuario_origen": current_user.id_usuario,
+            "id_usuario_destino": accepted_by,
+            "tipo": "rechazado",
+            "titulo": f"Tu oferta para '{pedido.get('titulo')}' fue rechazada",
+            "descripcion": f"El cliente rechazó tu oferta para el pedido: {pedido.get('descripcion')}",
+            "precio_anterior": pedido.get("precio")
+        }
+        
+        # Revertir pedido a estado pendiente
+        supabase.from_("Pedido").update({
+            "accepted_by": None,
+            "accepted_at": None,
+            "status": "pendiente"
+        }).eq("id_pedidos", id_pedido).execute()
+        
+        # Crear la notificación
+        response = supabase.from_("notificaciones_pedidos_respuestas").insert(notif_data).execute()
+        if hasattr(response, 'error') and response.error:
+            raise HTTPException(status_code=400, detail=str(response.error))
+        
+        return response.data[0] if response.data else notif_data
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error creando notif rechazado: {e}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+@app.post("/notificaciones_respuestas/contraoferta")
+async def crear_notif_contraoferta(
+    id_pedido: int,
+    precio_nuevo: float,
+    comentario: Optional[str] = None,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Crear notificación de contraoferta"""
+    try:
+        # Obtener el pedido
+        pedido_response = supabase.from_("Pedido").select("*").eq("id_pedidos", id_pedido).single().execute()
+        if not pedido_response.data:
+            raise HTTPException(status_code=404, detail="Pedido no encontrado")
+        
+        pedido = pedido_response.data
+        accepted_by = pedido.get("accepted_by")
+        
+        if not accepted_by:
+            raise HTTPException(status_code=400, detail="El pedido no tiene una oferta aceptada para hacer contraoferta")
+        
+        # Crear notificación de contraoferta
+        notif_data = {
+            "id_pedido": id_pedido,
+            "id_usuario_origen": current_user.id_usuario,
+            "id_usuario_destino": accepted_by,
+            "tipo": "contraoferta",
+            "titulo": f"Contraoferta para '{pedido.get('titulo')}'",
+            "descripcion": f"Nueva propuesta para el pedido: {pedido.get('descripcion')}",
+            "precio_anterior": pedido.get("precio"),
+            "precio_nuevo": precio_nuevo,
+            "comentario": comentario
+        }
+        
+        response = supabase.from_("notificaciones_pedidos_respuestas").insert(notif_data).execute()
+        if hasattr(response, 'error') and response.error:
+            raise HTTPException(status_code=400, detail=str(response.error))
+        
+        return response.data[0] if response.data else notif_data
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error creando contraoferta: {e}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+@app.put("/notificaciones_respuestas/{id}/visto")
+async def marcar_notif_visto(id: int, current_user: UserInDB = Depends(get_current_user)):
+    """Marcar notificación como vista"""
+    try:
+        response = supabase.from_("notificaciones_pedidos_respuestas").update({
+            "visto": True
+        }).eq("id", id).eq("id_usuario_destino", current_user.id_usuario).execute()
+        
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Notificación no encontrada")
+        
+        return response.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error marcando visto: {e}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
 # ----- Ubicacion -----
 @app.get("/ubicaciones")
 async def list_ubicaciones():
