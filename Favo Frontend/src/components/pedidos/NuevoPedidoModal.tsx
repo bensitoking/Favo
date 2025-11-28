@@ -24,7 +24,7 @@ const NuevoPedidoModal: React.FC<Props> = ({ isOpen, onClose, apiUrl, id_categor
     setSubmitting(true);
     setError(null);
     try {
-      const token = localStorage.getItem("access_token");
+      const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
       const body = {
         titulo: form.titulo,
         descripcion: form.descripcion,

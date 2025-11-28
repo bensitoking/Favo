@@ -461,12 +461,20 @@ async def get_profesionales_destacados():
             ).eq("id_usuario", user_id).single().execute()
             
             if user_response.data:
-                # Obtener nombre de ubicación si existe
+                # Obtener ubicación si existe
                 ubicacion_nombre = None
                 if user_response.data.get("id_ubicacion"):
-                    ubicacion_response = supabase.from_("Ubicacion").select("nombre").eq("id_ubicacion", user_response.data["id_ubicacion"]).single().execute()
+                    ubicacion_response = supabase.from_("Ubicacion").select(
+                        "provincia,barrio_zona"
+                    ).eq("id_ubicacion", user_response.data["id_ubicacion"]).single().execute()
                     if ubicacion_response.data:
-                        ubicacion_nombre = ubicacion_response.data.get("nombre")
+                        # Construir ubicación con provincia y barrio_zona
+                        provincia = ubicacion_response.data.get("provincia")
+                        barrio = ubicacion_response.data.get("barrio_zona")
+                        if barrio:
+                            ubicacion_nombre = barrio
+                        elif provincia:
+                            ubicacion_nombre = provincia
                 
                 resultado.append({
                     "id_usuario": user_response.data["id_usuario"],

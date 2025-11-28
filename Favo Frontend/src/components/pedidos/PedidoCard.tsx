@@ -14,7 +14,7 @@ type Pedido = {
 };
 
 const API_URL = "https://favo-iy6h.onrender.com";
-const token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
+const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || localStorage.getItem('token') || '';
 
 const getCurrentUserId = async (): Promise<number | null> => {
   try {

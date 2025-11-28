@@ -45,7 +45,7 @@ export default function PedidoDetail() {
     // fetch current user id to validate ownership
     const fetchMe = async () => {
       try {
-        const token = localStorage.getItem("access_token");
+        const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
         if (!token) return;
         const res = await fetch(`${API_URL}/users/me/`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -76,7 +76,7 @@ export default function PedidoDetail() {
     }
     
     try {
-      const token = localStorage.getItem("access_token");
+      const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
       if (!token) throw new Error("No autenticado");
 
       // Aceptar el pedido usando el endpoint correcto

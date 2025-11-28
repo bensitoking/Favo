@@ -26,7 +26,7 @@ type Servicio = {
 
 const API_URL = "https://favo-iy6h.onrender.com";
 const getToken = () =>
-  localStorage.getItem('access_token') || localStorage.getItem('token') || '';
+  localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || localStorage.getItem('token') || '';
 
 export default function MyActivitiesPage() {
   const [tab, setTab] = useState<'pedidos' | 'servicios'>('pedidos');
