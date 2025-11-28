@@ -254,7 +254,7 @@ async def get_notificaciones_pedidos(current_user: UserInDB = Depends(get_curren
 @app.post("/notificaciones_pedidos", response_model=NotificacionPedido)
 async def create_notificacion_pedido(notificacion: NotificacionPedidoBase, current_user: UserInDB = Depends(get_current_user)):
     data = notificacion.dict()
-    allowed = {"titulo", "desc", "precio", "ubicacion", "id_usuario", "accepted_by"}
+    allowed = {"titulo", "desc", "precio", "ubicacion", "id_usuario", "accepted_by", "id_categoria"}
     insert_data = {k: v for k, v in data.items() if k in allowed}
     response = supabase.from_("notificaciones_pedidos").insert(insert_data).execute()
     if hasattr(response, 'error') and response.error:
@@ -765,6 +765,7 @@ async def aceptar_pedido(id: int, current_user: UserInDB = Depends(get_current_u
         "precio": pedido.get("precio") or 0,
         "ubicacion": "",
         "id_usuario": pedido.get("id_usuario"),
+        "id_categoria": pedido.get("id_categoria"),
         "accepted_by": current_user.id_usuario
     }
     supabase.from_("notificaciones_pedidos").insert(notif).execute()
