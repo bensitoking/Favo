@@ -600,16 +600,20 @@ async def delete_notif_respuesta(id: int, current_user: UserInDB = Depends(get_c
 @app.post("/notificaciones_respuestas/{id}/contraoferta")
 async def enviar_contraoferta_respuesta(
     id: int,
-    precio_nuevo: float,
-    comentario: Optional[str] = None,
+    precio_nuevo: float = Query(...),
+    comentario: Optional[str] = Query(None),
     current_user: UserInDB = Depends(get_current_user)
 ):
-    """Enviar una contraoferta como respuesta a una notificación"""
+    """Enviar una contraoferta en cadena a una contraoferta existente"""
     try:
         # Obtener la notificación original
         notif = supabase.from_("notificaciones_pedidos_respuestas").select("*").eq("id", id).single().execute()
         if not notif.data:
             raise HTTPException(status_code=404, detail="Notificación no encontrada")
+        
+        # Verificar que es una contraoferta
+        if notif.data["tipo"] != "contraoferta":
+            raise HTTPException(status_code=400, detail="Solo se puede hacer contraoferta a una contraoferta")
         
         # Verificar que el usuario es el destino (quien recibe la oferta)
         if notif.data["id_usuario_destino"] != current_user.id_usuario:
@@ -622,16 +626,15 @@ async def enviar_contraoferta_respuesta(
         user = supabase.from_("Usuario").select("nombre").eq("id_usuario", current_user.id_usuario).single().execute()
         nombre = user.data.get("nombre") if user.data else "Usuario"
         
-        # Crear nueva notificación de contraoferta
-        # id_usuario_origen = quien envía la contraoferta (destino actual)
-        # id_usuario_destino = quien recibe (origen actual)
+        # Crear nueva contraoferta en cadena
+        # El destino actual se vuelve origen, el origen actual se vuelve destino
         respuesta = {
             "id_usuario_origen": current_user.id_usuario,
             "id_usuario_destino": notif.data["id_usuario_origen"],
             "tipo": "contraoferta",
             "titulo": f"{nombre} hizo una contraoferta",
             "descripcion": notif.data.get("descripcion", ""),
-            "precio_anterior": notif.data.get("precio_anterior"),
+            "precio_anterior": notif.data.get("precio_nuevo"),
             "precio_nuevo": precio_nuevo,
             "comentario": comentario,
             "visto": False
@@ -640,6 +643,9 @@ async def enviar_contraoferta_respuesta(
         res = supabase.from_("notificaciones_pedidos_respuestas").insert(respuesta).execute()
         if hasattr(res, 'error') and res.error:
             raise HTTPException(status_code=400, detail=str(res.error))
+        
+        # Eliminar la contraoferta anterior
+        supabase.from_("notificaciones_pedidos_respuestas").delete().eq("id", id).execute()
         
         return {"message": "Contraoferta enviada", "id": res.data[0]["id"]}
     except HTTPException:

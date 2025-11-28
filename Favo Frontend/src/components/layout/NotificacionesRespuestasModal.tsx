@@ -224,16 +224,11 @@ const NotificacionCard: React.FC<CardProps> = ({ notif, onRefresh }) => {
         </div>
       )}
 
-      {!puedeResponder && notif.tipo !== 'contraoferta' && (
+      {!puedeResponder && (
         <div className="border-t pt-3 space-y-2">
-          <div className="text-xs font-semibold text-gray-600">Marcar como leída</div>
-          <button
-            onClick={() => handleResponder(notif.tipo as any)}
-            disabled={loading}
-            className="w-full bg-green-500 hover:bg-green-600 text-white text-sm py-2 rounded transition disabled:opacity-50"
-          >
-            ✓ Aceptar
-          </button>
+          <div className="text-xs font-semibold text-gray-600 text-center">
+            {notif.tipo === 'aceptado' ? '✅ Oferta Aceptada' : '❌ Oferta Rechazada'}
+          </div>
         </div>
       )}
 
