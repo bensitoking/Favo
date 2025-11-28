@@ -51,8 +51,8 @@ export function PedidoCard({ pedido }: { pedido: Pedido }) {
     }
   })();
 
-  // Solo el creador del pedido (id_usuario) puede marcarlo como completado
-  const canComplete = pedido.status === 'en_proceso' && currentUserId === pedido.id_usuario;
+  // El creador del pedido (id_usuario) o quien lo aceptó (accepted_by) pueden marcarlo como completado si está en proceso
+  const canComplete = pedido.status === 'en_proceso' && currentUserId && (currentUserId === pedido.id_usuario || currentUserId === pedido.accepted_by);
 
   const completar = async () => {
     try {

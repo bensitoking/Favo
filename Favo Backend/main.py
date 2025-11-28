@@ -685,6 +685,7 @@ class Pedido(PedidoBase):
     status: str = "pendiente"
     accepted_by: Optional[int] = None
     accepted_at: Optional[str] = None
+    aceptado_por_nombre: Optional[str] = None
 
 @app.get("/pedidos")
 async def get_pedidos(id_categoria: Optional[int] = None, status: Optional[str] = None):
@@ -802,7 +803,16 @@ async def get_my_pedidos(
             query = query.eq("status", status)
 
         response = query.order("id_pedidos", desc=True).execute()
-        return response.data or []
+        data = response.data or []
+        
+        # Enriquecer con nombre de quien aceptó
+        for pedido in data:
+            if pedido.get("accepted_by"):
+                user_response = supabase.from_("Usuario").select("nombre").eq("id_usuario", pedido["accepted_by"]).single().execute()
+                if user_response.data:
+                    pedido["aceptado_por_nombre"] = user_response.data.get("nombre")
+        
+        return data
     except Exception as e:
         print(f"Error en GET /users/me/pedidos: {e}")
         raise HTTPException(status_code=500, detail=f"Error al obtener pedidos: {str(e)}")
