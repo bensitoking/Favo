@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MailIcon, LockIcon, UserIcon, AlertCircleIcon } from 'lucide-react';
+import { MailIcon, LockIcon, UserIcon, AlertCircleIcon, MapPinIcon } from 'lucide-react';
 const API_URL =  'https://favo-iy6h.onrender.com';
 
 export const RegisterPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [nombre, setNombre] = useState('');
+  const [provincia, setProvincia] = useState('');
+  const [barrio, setBarrio] = useState('');
+  const [calle, setCalle] = useState('');
+  const [altura, setAltura] = useState('');
+  const [piso, setPiso] = useState('');
   const [errors, setErrors] = useState({
     email: '',
     password: '',
@@ -50,7 +55,7 @@ export const RegisterPage = () => {
     return isValid;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!validateForm()) return;
 
@@ -66,7 +71,12 @@ export const RegisterPage = () => {
         body: JSON.stringify({
           email,
           password,
-          nombre
+          nombre,
+          provincia: provincia || undefined,
+          barrio_zona: barrio || undefined,
+          calle: calle || undefined,
+          altura: altura || undefined,
+          piso: piso ? parseInt(piso) : undefined
         }),
       });
 
@@ -92,14 +102,15 @@ export const RegisterPage = () => {
       }
 
       const data = await loginResponse.json();
-  localStorage.setItem('access_token', data.access_token);
-  // Disparar manualmente el evento storage para que el header se actualice
-  window.dispatchEvent(new StorageEvent('storage', { key: 'access_token', newValue: data.access_token }));
-  navigate('/');
+      localStorage.setItem('access_token', data.access_token);
+      // Disparar manualmente el evento storage para que el header se actualice
+      window.dispatchEvent(new StorageEvent('storage', { key: 'access_token', newValue: data.access_token }));
+      navigate('/');
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error en el registro';
       setErrors({
         ...errors,
-        general: error.message || 'Error en el registro'
+        general: errorMessage
       });
     } finally {
       setLoading(false);
@@ -127,8 +138,9 @@ export const RegisterPage = () => {
             </div>
           )}
 
-          <div className="bg-white rounded-xl shadow-lg p-8">
+          <div className="bg-white rounded-xl shadow-lg p-8 max-h-[85vh] overflow-y-auto">
             <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Nombre */}
               <div>
                 <label htmlFor="nombre" className="block text-sm font-medium text-gray-700 mb-1">
                   Nombre completo
@@ -157,6 +169,7 @@ export const RegisterPage = () => {
                 )}
               </div>
 
+              {/* Email */}
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                   Correo electrónico
@@ -185,6 +198,7 @@ export const RegisterPage = () => {
                 )}
               </div>
 
+              {/* Password */}
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                   Contraseña
@@ -213,10 +227,99 @@ export const RegisterPage = () => {
                 )}
               </div>
 
+              {/* Divider */}
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">Ubicación (opcional)</span>
+                </div>
+              </div>
+
+              {/* Ubicación */}
+              <div className="space-y-4 bg-blue-50 p-4 rounded-lg">
+                <div>
+                  <label htmlFor="provincia" className="block text-sm font-medium text-gray-700 mb-1">
+                    Provincia
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <MapPinIcon size={20} className="text-gray-400" />
+                    </div>
+                    <input 
+                      id="provincia"
+                      type="text" 
+                      value={provincia} 
+                      onChange={e => setProvincia(e.target.value)} 
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent transition-colors duration-200" 
+                      placeholder="Ej: Buenos Aires"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="barrio" className="block text-sm font-medium text-gray-700 mb-1">
+                    Barrio / Zona
+                  </label>
+                  <input 
+                    id="barrio"
+                    type="text" 
+                    value={barrio} 
+                    onChange={e => setBarrio(e.target.value)} 
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent transition-colors duration-200" 
+                    placeholder="Ej: Almagro"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="calle" className="block text-sm font-medium text-gray-700 mb-1">
+                    Calle
+                  </label>
+                  <input 
+                    id="calle"
+                    type="text" 
+                    value={calle} 
+                    onChange={e => setCalle(e.target.value)} 
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent transition-colors duration-200" 
+                    placeholder="Ej: Av. Corrientes"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="altura" className="block text-sm font-medium text-gray-700 mb-1">
+                      Altura
+                    </label>
+                    <input 
+                      id="altura"
+                      type="text" 
+                      value={altura} 
+                      onChange={e => setAltura(e.target.value)} 
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent transition-colors duration-200" 
+                      placeholder="Ej: 1234"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="piso" className="block text-sm font-medium text-gray-700 mb-1">
+                      Piso
+                    </label>
+                    <input 
+                      id="piso"
+                      type="number" 
+                      value={piso} 
+                      onChange={e => setPiso(e.target.value)} 
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent transition-colors duration-200" 
+                      placeholder="Ej: 3"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <button 
                 type="submit" 
                 disabled={loading}
-                className="w-full bg-blue-800 text-white py-2.5 px-4 rounded-lg hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-800 focus:ring-offset-2 transition-colors duration-200 font-medium disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full bg-blue-800 text-white py-2.5 px-4 rounded-lg hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-800 focus:ring-offset-2 transition-colors duration-200 font-medium disabled:opacity-70 disabled:cursor-not-allowed mt-6"
               >
                 {loading ? 'Registrando...' : 'Registrarse'}
               </button>

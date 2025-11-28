@@ -475,7 +475,10 @@ export const ProfilePage = () => {
                               if (barrioInput) locationData.barrio_zona = barrioInput;
                               if (calleInput) locationData.calle = calleInput;
                               if (alturaInput) locationData.altura = alturaInput;
-                              if (pisoInput) locationData.piso = parseInt(pisoInput);
+                              if (pisoInput && pisoInput.trim()) {
+                                const pisoNum = parseInt(pisoInput.trim());
+                                if (!isNaN(pisoNum)) locationData.piso = pisoNum;
+                              }
 
                               let locationRes;
                               if (selectedLocationId) {

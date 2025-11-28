@@ -62,6 +62,11 @@ class UserCreate(BaseModel):
     email: str
     password: str
     nombre: Optional[str] = None
+    provincia: Optional[str] = None
+    barrio_zona: Optional[str] = None
+    calle: Optional[str] = None
+    altura: Optional[str] = None
+    piso: Optional[int] = None
 
 class UserInDB(BaseModel):
     id_usuario: int
@@ -295,6 +300,10 @@ async def update_ubicacion(id: int, ubicacion: UbicacionCreate, current_user: Us
     try:
         # Excluir campos vacíos/null
         data = {k: v for k, v in ubicacion.dict().items() if v is not None}
+        
+        if not data:
+            raise HTTPException(status_code=400, detail="No hay datos para actualizar")
+        
         response = supabase.from_("Ubicacion").update(data).eq("id_ubicacion", id).execute()
         if hasattr(response, 'error') and response.error:
             raise HTTPException(status_code=400, detail=str(response.error))
@@ -307,6 +316,7 @@ async def update_ubicacion(id: int, ubicacion: UbicacionCreate, current_user: Us
     except HTTPException:
         raise
     except Exception as e:
+        print(f"DEBUG: Exception en update_ubicacion: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error al actualizar ubicación: {str(e)}")
 
 # ----- Perfil (update) -----
@@ -865,8 +875,49 @@ async def register_user(user: UserCreate):
     existing_user = await get_user(user.email)
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
+    
     hashed_password = get_password_hash(user.password)
-    new_user = {"mail": user.email, "password": hashed_password, "nombre": user.nombre}
+    
+    # Crear ubicación si se proporcionan datos
+    id_ubicacion = None
+    if any([user.provincia, user.barrio_zona, user.calle, user.altura, user.piso]):
+        try:
+            # Obtener el ID máximo actual
+            max_id_response = supabase.from_("Ubicacion").select("id_ubicacion").order("id_ubicacion", desc=True).limit(1).execute()
+            max_id = 0
+            if max_id_response.data and len(max_id_response.data) > 0:
+                max_id = max_id_response.data[0].get("id_ubicacion", 0)
+            
+            new_id = max_id + 1
+            
+            # Preparar datos de ubicación
+            location_data = {
+                "id_ubicacion": new_id,
+                "provincia": user.provincia,
+                "barrio_zona": user.barrio_zona,
+                "calle": user.calle,
+                "altura": user.altura,
+                "piso": user.piso
+            }
+            # Remover campos None
+            location_data = {k: v for k, v in location_data.items() if v is not None}
+            
+            loc_response = supabase.from_("Ubicacion").insert(location_data).execute()
+            if loc_response.data and len(loc_response.data) > 0:
+                id_ubicacion = new_id
+        except Exception as e:
+            print(f"Warning: No se pudo crear ubicación durante registro: {e}")
+            # Continuar sin ubicación
+    
+    # Crear usuario
+    new_user = {
+        "mail": user.email,
+        "password": hashed_password,
+        "nombre": user.nombre or "Usuario"
+    }
+    if id_ubicacion:
+        new_user["id_ubicacion"] = id_ubicacion
+    
     response = supabase.from_("Usuario").insert(new_user).execute()
     if hasattr(response, 'error') and response.error:
         raise HTTPException(status_code=400, detail=str(response.error))
