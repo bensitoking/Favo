@@ -1,13 +1,13 @@
 import React from 'react';
-import { StarIcon, MapPinIcon } from 'lucide-react';
+import { StarIcon, MapPinIcon, UserIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 type Provider = {
   id_usuario?: number;
   name: string;
   rating: number;
-  location: string;
-  image: string;
+  location?: string | null;
+  image?: string | null;
   description: string;
   skills?: string[];
 };
@@ -25,11 +25,17 @@ export const ServiceCard = ({ provider }: { provider: Provider }) => {
     <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow overflow-hidden border border-gray-100">
       <div className="p-5">
         <div className="flex items-start space-x-4">
-          <img 
-            src={provider.image} 
-            alt={provider.name} 
-            className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm" 
-          />
+          {provider.image ? (
+            <img 
+              src={provider.image} 
+              alt={provider.name} 
+              className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm" 
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-gray-200 border-2 border-white shadow-sm flex items-center justify-center">
+              <UserIcon size={32} className="text-gray-500" />
+            </div>
+          )}
           <div className="flex-1">
             <div className="flex justify-between items-start">
               <h3 className="font-semibold text-gray-800">{provider.name}</h3>
@@ -39,10 +45,12 @@ export const ServiceCard = ({ provider }: { provider: Provider }) => {
               </div>
             </div>
             
-            <div className="flex items-center text-gray-500 text-xs mt-1">
-              <MapPinIcon size={12} className="mr-1" />
-              {provider.location}
-            </div>
+            {provider.location && (
+              <div className="flex items-center text-gray-500 text-xs mt-1">
+                <MapPinIcon size={12} className="mr-1" />
+                {provider.location}
+              </div>
+            )}
             
             <div className="mt-2 flex flex-wrap gap-2">
               {provider.skills?.slice(0, 3).map((skill: string, i: number) => (

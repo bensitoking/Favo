@@ -457,15 +457,23 @@ async def get_profesionales_destacados():
         for user_info in top_6:
             user_id = user_info["id_usuario"]
             user_response = supabase.from_("Usuario").select(
-                "id_usuario,nombre,descripcion,foto_perfil,verificado"
+                "id_usuario,nombre,descripcion,foto_perfil,verificado,id_ubicacion"
             ).eq("id_usuario", user_id).single().execute()
             
             if user_response.data:
+                # Obtener nombre de ubicación si existe
+                ubicacion_nombre = None
+                if user_response.data.get("id_ubicacion"):
+                    ubicacion_response = supabase.from_("Ubicacion").select("nombre").eq("id_ubicacion", user_response.data["id_ubicacion"]).single().execute()
+                    if ubicacion_response.data:
+                        ubicacion_nombre = ubicacion_response.data.get("nombre")
+                
                 resultado.append({
                     "id_usuario": user_response.data["id_usuario"],
                     "nombre": user_response.data.get("nombre", "Usuario"),
                     "descripcion": user_response.data.get("descripcion", ""),
-                    "foto_perfil": user_response.data.get("foto_perfil", "https://randomuser.me/api/portraits/lego/1.jpg"),
+                    "foto_perfil": user_response.data.get("foto_perfil"),
+                    "ubicacion": ubicacion_nombre,
                     "verificado": user_response.data.get("verificado", False),
                     "rating": user_info["promedio"],
                     "cantidad_ratings": user_info["cantidad"]

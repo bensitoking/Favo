@@ -93,8 +93,8 @@ export default function Home() {
                         id_usuario: professional.id_usuario,
                         name: professional.nombre,
                         rating: professional.rating,
-                        location: professional.nombre,
-                        image: professional.foto_perfil || 'https://randomuser.me/api/portraits/lego/1.jpg',
+                        location: professional.ubicacion,
+                        image: professional.foto_perfil,
                         description: professional.descripcion || 'Profesional destacado',
                         skills: []
                       }}

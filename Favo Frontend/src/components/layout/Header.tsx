@@ -185,7 +185,7 @@ export const Header = ({ isLoading = false }) => {
                 }`}
               >
                 <ShoppingBagIcon size={16} />
-                <span>Mis Pedidos</span>
+                <span>Mis Actividades</span>
               </Link>
               <Link
                 to="/perfil"
