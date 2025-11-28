@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'; 
-import { MessageSquareIcon, ShoppingBagIcon, UserIcon, HelpCircleIcon, BellIcon } from 'lucide-react';
+import { MessageSquareIcon, ShoppingBagIcon, UserIcon, HelpCircleIcon, BellIcon, CheckCircleIcon } from 'lucide-react';
 import { NotificacionesModal } from './NotificacionesModal';
 import { NotificacionesRespuestasModal } from './NotificacionesRespuestasModal';
 import { Link, useLocation } from 'react-router-dom';
@@ -125,7 +125,7 @@ export const Header = ({ isLoading = false }) => {
             {/* Campanita de notificaciones */}
             <button
               className="relative text-gray-600 hover:text-blue-700 focus:outline-none"
-              title="Notificaciones"
+              title="Notificaciones de servicios"
               onClick={() => setShowNotificaciones(true)}
             >
               <BellIcon size={22} />
@@ -134,13 +134,13 @@ export const Header = ({ isLoading = false }) => {
               )}
             </button>
 
-            {/* Campanita de respuestas de ofertas */}
+            {/* Icono de respuestas de ofertas */}
             <button
               className="relative text-gray-600 hover:text-green-700 focus:outline-none"
               title="Respuestas de ofertas"
               onClick={() => setShowNotificacionesRespuestas(true)}
             >
-              <BellIcon size={22} />
+              <CheckCircleIcon size={22} />
               {notificacionesRespuestas.length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full px-1.5 py-0.5">{notificacionesRespuestas.length}</span>
               )}

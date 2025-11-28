@@ -336,11 +336,11 @@ export const RegisterPage = () => {
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-500">
               Al registrarte, aceptas nuestros{' '}
-              <a href="#" className="text-blue-800 hover:text-blue-900">
+              <a  className="text-blue-800 hover:text-blue-900">
                 términos y condiciones
               </a>{' '}
               y{' '}
-              <a href="#" className="text-blue-800 hover:text-blue-900">
+              <a className="text-blue-800 hover:text-blue-900">
                 política de privacidad
               </a>
             </p>

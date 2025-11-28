@@ -259,8 +259,8 @@ export const ProfilePage = () => {
                   setProvinceInput(user.Ubicacion.provincia || '');
                   setBarrioInput(user.Ubicacion.barrio_zona || '');
                   setCalleInput(user.Ubicacion.calle || '');
-                  setAlturaInput(user.Ubicacion.altura || '');
-                  setPisoInput(user.Ubicacion.piso || '');
+                  setAlturaInput(String(user.Ubicacion.altura || ''));
+                  setPisoInput(String(user.Ubicacion.piso || ''));
                 }
               }} className="bg-blue-800 text-white px-4 py-2 rounded-lg hover:bg-blue-900">Editar perfil</button>
             </div>
@@ -475,8 +475,8 @@ export const ProfilePage = () => {
                               if (barrioInput) locationData.barrio_zona = barrioInput;
                               if (calleInput) locationData.calle = calleInput;
                               if (alturaInput) locationData.altura = alturaInput;
-                              if (pisoInput && pisoInput.trim()) {
-                                const pisoNum = parseInt(pisoInput.trim());
+                              if (pisoInput && String(pisoInput).trim()) {
+                                const pisoNum = parseInt(String(pisoInput).trim());
                                 if (!isNaN(pisoNum)) locationData.piso = pisoNum;
                               }
 

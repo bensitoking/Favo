@@ -203,12 +203,6 @@ export const LoginPage = () => {
                     Recordarme
                   </label>
                 </div>
-                <a 
-                  href="/forgot-password" 
-                  className="text-sm text-blue-800 hover:text-blue-900 transition-colors duration-200"
-                >
-                  ¿Olvidaste tu contraseña?
-                </a>
               </div>
 
               <button 
@@ -242,11 +236,11 @@ export const LoginPage = () => {
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-500">
               Al iniciar sesión, aceptás nuestros{' '}
-              <a href="/terms" className="text-blue-800 hover:text-blue-900">
+              <a  className="text-blue-800 hover:text-blue-900">
                 términos y condiciones
               </a>{' '}
               y{' '}
-              <a href="/privacy" className="text-blue-800 hover:text-blue-900">
+              <a  className="text-blue-800 hover:text-blue-900">
                 política de privacidad
               </a>
             </p>

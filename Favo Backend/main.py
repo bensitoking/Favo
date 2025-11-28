@@ -1166,6 +1166,10 @@ async def create_servicio(servicio: ServicioBase, current_user: UserInDB = Depen
     response = supabase.from_("Servicio").insert(data).execute()
     if hasattr(response, 'error') and response.error:
         raise HTTPException(status_code=400, detail=str(response.error))
+    
+    # Actualizar esProvedor a true
+    supabase.from_("Usuario").update({"esProvedor": True}).eq("id_usuario", current_user.id_usuario).execute()
+    
     return response.data[0]
 
 # NUEVO: mis servicios (del usuario autenticado)
@@ -1222,6 +1226,10 @@ async def create_pedido(pedido: PedidoBase, current_user: UserInDB = Depends(get
     response = supabase.from_("Pedido").insert(data).execute()
     if hasattr(response, 'error') and response.error:
         raise HTTPException(status_code=400, detail=str(response.error))
+    
+    # Actualizar esDemanda a true
+    supabase.from_("Usuario").update({"esDemanda": True}).eq("id_usuario", current_user.id_usuario).execute()
+    
     return response.data[0]
 
 @app.get("/pedidos/{id}")
