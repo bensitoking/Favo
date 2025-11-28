@@ -7,6 +7,7 @@ type Pedido = {
   descripcion: string;
   precio?: number;
   id_categoria: number;
+  categoria_nombre?: string;
   id_usuario: number;
   status: 'pendiente' | 'en_proceso' | 'completado';
   accepted_by?: number | null;
@@ -15,27 +16,27 @@ type Pedido = {
 };
 
 const API_URL = "https://favo-iy6h.onrender.com";
-const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || localStorage.getItem('token') || '';
-
-const getCurrentUserId = async (): Promise<number | null> => {
-  try {
-    const res = await fetch(`${API_URL}/users/me/`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.id_usuario || null;
-  } catch (e) {
-    console.error('Error fetching current user:', e);
-    return null;
-  }
-};
+const getToken = () => localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || localStorage.getItem('token') || '';
 
 export function PedidoCard({ pedido }: { pedido: Pedido }) {
   const [currentUserId, setCurrentUserId] = React.useState<number | null>(null);
 
   React.useEffect(() => {
-    getCurrentUserId().then(setCurrentUserId);
+    const token = getToken();
+    const fetchCurrentUser = async () => {
+      try {
+        const res = await fetch(`${API_URL}/users/me/`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setCurrentUserId(data.id_usuario || null);
+        }
+      } catch (e) {
+        console.error('Error fetching current user:', e);
+      }
+    };
+    fetchCurrentUser();
   }, []);
 
   const statusInfo = (() => {
@@ -56,6 +57,7 @@ export function PedidoCard({ pedido }: { pedido: Pedido }) {
 
   const completar = async () => {
     try {
+      const token = getToken();
       const res = await fetch(`${API_URL}/pedidos/${pedido.id_pedidos}/completar`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
@@ -101,7 +103,7 @@ export function PedidoCard({ pedido }: { pedido: Pedido }) {
         )}
         <div className="flex items-center gap-1">
           <MapPinIcon size={16} />
-          <span>Cat. {pedido.id_categoria}</span>
+          <span>Cat. {pedido.categoria_nombre || `${pedido.id_categoria}`}</span>
         </div>
       </div>
 

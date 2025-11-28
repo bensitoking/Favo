@@ -800,9 +800,9 @@ async def get_my_pedidos(
     """
     try:
         if scope == "owner":
-            query = supabase.from_("Pedido").select("id_pedidos,titulo,descripcion,precio,id_usuario,id_categoria,status,accepted_by,accepted_at").eq("id_usuario", current_user.id_usuario)
+            query = supabase.from_("Pedido").select("id_pedidos,titulo,descripcion,precio,id_usuario,id_categoria,status,accepted_by,accepted_at,Categoria(nombre)").eq("id_usuario", current_user.id_usuario)
         else:
-            query = supabase.from_("Pedido").select("id_pedidos,titulo,descripcion,precio,id_usuario,id_categoria,status,accepted_by,accepted_at").eq("accepted_by", current_user.id_usuario)
+            query = supabase.from_("Pedido").select("id_pedidos,titulo,descripcion,precio,id_usuario,id_categoria,status,accepted_by,accepted_at,Categoria(nombre)").eq("accepted_by", current_user.id_usuario)
 
         if status and status.strip():
             query = query.eq("status", status)
@@ -810,12 +810,18 @@ async def get_my_pedidos(
         response = query.order("id_pedidos", desc=True).execute()
         data = response.data or []
         
-        # Enriquecer con nombre de quien aceptó
+        # Enriquecer con nombre de quien aceptó y normalizar nombre de categoría
         for pedido in data:
             if pedido.get("accepted_by"):
                 user_response = supabase.from_("Usuario").select("nombre").eq("id_usuario", pedido["accepted_by"]).single().execute()
                 if user_response.data:
                     pedido["aceptado_por_nombre"] = user_response.data.get("nombre")
+            
+            # Extraer nombre de categoría si viene como relación
+            if isinstance(pedido.get("Categoria"), dict):
+                pedido["categoria_nombre"] = pedido["Categoria"].get("nombre")
+            elif isinstance(pedido.get("Categoria"), list) and len(pedido["Categoria"]) > 0:
+                pedido["categoria_nombre"] = pedido["Categoria"][0].get("nombre")
         
         return data
     except Exception as e:

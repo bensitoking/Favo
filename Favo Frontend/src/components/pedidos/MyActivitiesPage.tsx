@@ -9,6 +9,7 @@ type Pedido = {
   descripcion: string;
   precio?: number;
   id_categoria: number;
+  categoria_nombre?: string;
   id_usuario: number;       // dueño (demanda)
   status: 'pendiente' | 'en_proceso' | 'completado';
   accepted_by?: number | null;
@@ -80,6 +81,11 @@ export default function MyActivitiesPage() {
       }
     }
     fetchData();
+    
+    // Refresco automático cada 5 segundos para mantener datos actualizados
+    const interval = setInterval(fetchData, 5000);
+    
+    return () => clearInterval(interval);
   }, [tab, pedidoView, pedidoFilter, headers]);
 
   return (
