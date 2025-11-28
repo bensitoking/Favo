@@ -521,6 +521,27 @@ async def marcar_notif_visto(id: int, current_user: UserInDB = Depends(get_curre
         print(f"Error marcando visto: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
+@app.delete("/notificaciones_respuestas/{id}")
+async def delete_notif_respuesta(id: int, current_user: UserInDB = Depends(get_current_user)):
+    """Eliminar notificación de respuesta"""
+    try:
+        # Verificar que la notificación pertenece al usuario
+        notif = supabase.from_("notificaciones_pedidos_respuestas").select("*").eq("id", id).single().execute()
+        if not notif.data:
+            raise HTTPException(status_code=404, detail="Notificación no encontrada")
+        
+        if notif.data["id_usuario_destino"] != current_user.id_usuario:
+            raise HTTPException(status_code=403, detail="No autorizado")
+        
+        # Eliminar
+        supabase.from_("notificaciones_pedidos_respuestas").delete().eq("id", id).execute()
+        return {"message": "Notificación eliminada"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error eliminando notificación: {e}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
 # ----- Ubicacion -----
 @app.get("/ubicaciones")
 async def list_ubicaciones():

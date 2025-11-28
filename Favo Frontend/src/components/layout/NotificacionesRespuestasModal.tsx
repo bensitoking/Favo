@@ -41,10 +41,10 @@ const NotificacionCard: React.FC<CardProps> = ({ notif, onRefresh }) => {
         return;
       }
 
-      // Para aceptado y rechazado, solo marcar como visto y eliminar
+      // Para aceptado y rechazado, marcar como visto y eliminar
       if (tipo === 'aceptado' || tipo === 'rechazado') {
-        const res = await fetch(`${API_BASE}/notificaciones_respuestas/${notif.id}/visto`, {
-          method: "PUT",
+        const res = await fetch(`${API_BASE}/notificaciones_respuestas/${notif.id}`, {
+          method: "DELETE",
           headers: {
             "Authorization": `Bearer ${token}`,
             "Content-Type": "application/json"
@@ -52,11 +52,10 @@ const NotificacionCard: React.FC<CardProps> = ({ notif, onRefresh }) => {
         });
 
         if (!res.ok) {
-          alert("Error al marcar como visto");
+          alert("Error al eliminar notificación");
           return;
         }
 
-        alert(`Notificación marcada como leída`);
         onRefresh();
         return;
       }
