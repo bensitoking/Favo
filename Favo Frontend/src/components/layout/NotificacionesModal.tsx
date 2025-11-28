@@ -205,9 +205,73 @@ export const NotificacionesModal: React.FC<Props> = (props: Props) => {
                   </div>
                 )}
                 <div className="flex gap-2 mt-3">
-                  {/* ACEPTAR: comportamiento distinto según source */}
-                  {n.source === 'pedido' ? (
-                    // For pedido notifications: only show Accept which will delete/ack the notification
+                  {/* SOLO PARA NOTIFICACIONES DE SERVICIO */}
+                  {n.source === 'servicio' ? (
+                    <>
+                      {/* ACEPTAR */}
+                      <button
+                        onClick={async () => {
+                          try {
+                            const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
+                            if (!token) { window.location.href = '/login'; return; }
+                            const res = await fetch(`${API_BASE}/notificaciones_respuestas/aceptado?id_notif_servicio=${n.id}`, {
+                              method: 'POST',
+                              headers: { 'Authorization': `Bearer ${token}` }
+                            });
+                            if (res.ok) {
+                              alert('Oferta aceptada');
+                              setNotificaciones(prev => prev.filter(x => x.id !== n.id));
+                            } else {
+                              const err = await res.json();
+                              alert(`Error: ${err.detail}`);
+                            }
+                          } catch (err) { 
+                            console.error(err);
+                            alert('Error');
+                          }
+                        }}
+                        className="flex-1 bg-green-500 hover:bg-green-600 text-white rounded p-2 transition-colors text-sm"
+                      >
+                        ✓ Aceptar
+                      </button>
+                      
+                      {/* RECHAZAR */}
+                      <button
+                        onClick={async () => {
+                          try {
+                            const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
+                            if (!token) { window.location.href = '/login'; return; }
+                            const res = await fetch(`${API_BASE}/notificaciones_respuestas/rechazado?id_notif_servicio=${n.id}`, {
+                              method: 'POST',
+                              headers: { 'Authorization': `Bearer ${token}` }
+                            });
+                            if (res.ok) {
+                              alert('Oferta rechazada');
+                              setNotificaciones(prev => prev.filter(x => x.id !== n.id));
+                            } else {
+                              const err = await res.json();
+                              alert(`Error: ${err.detail}`);
+                            }
+                          } catch (err) { 
+                            console.error(err);
+                            alert('Error');
+                          }
+                        }}
+                        className="flex-1 bg-red-500 hover:bg-red-600 text-white rounded p-2 transition-colors text-sm"
+                      >
+                        ✗ Rechazar
+                      </button>
+                      
+                      {/* CONTRAOFERTA */}
+                      <button
+                        onClick={() => props.onMensaje && props.onMensaje(n.id)}
+                        className="flex-1 bg-blue-500 hover:bg-blue-600 text-white rounded p-2 transition-colors text-sm"
+                      >
+                        💬 Contraoferta
+                      </button>
+                    </>
+                  ) : (
+                    // For pedido notifications: only show checkmark to delete/ack
                     <button
                       onClick={async () => {
                         try {
@@ -219,103 +283,14 @@ export const NotificacionesModal: React.FC<Props> = (props: Props) => {
                           });
                           if (res.ok) {
                             setNotificaciones(prev => prev.filter(x => x.id !== n.id));
-                          } else {
-                            console.error('Failed to delete notificacion pedidos', res.status);
                           }
                         } catch (err) { console.error(err); }
                       }}
-                      className="bg-green-500 hover:bg-green-600 text-white rounded-full p-2 transition-colors"
-                      title="Aceptar"
+                      className="flex-1 bg-green-500 hover:bg-green-600 text-white rounded p-2 transition-colors text-sm"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    </button>
-                  ) : (
-                    // Service notifications: call the accept endpoint which creates a Pedido
-                    <button
-                      onClick={async () => {
-                        try {
-                          const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
-                          if (!token) { window.location.href = '/login'; return; }
-                          const res = await fetch(`${API_BASE}/notificaciones_servicios/${n.id}/aceptar`, {
-                            method: 'POST',
-                            headers: { 'Authorization': `Bearer ${token}` }
-                          });
-                          if (res.ok) {
-                            setNotificaciones(prev => prev.filter(x => x.id !== n.id));
-                            alert('Solicitud aceptada. Se creó un pedido en proceso.');
-                            window.location.reload();
-                          } else {
-                            const errorData = await res.json();
-                            console.error('Failed to accept notification', res.status, errorData);
-                            alert(`Error: ${errorData.detail || 'No se pudo aceptar'}`);
-                          }
-                        } catch (err) { 
-                          console.error(err);
-                          alert('Error al aceptar la solicitud');
-                        }
-                      }}
-                      className="bg-green-500 hover:bg-green-600 text-white rounded-full p-2 transition-colors"
-                      title="Aceptar"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
+                      ✓ Aceptar
                     </button>
                   )}
-
-                  {/* If parent provided notifications (service-mode) keep eliminar/chat buttons */}
-                  {n.source === 'servicio' ? (
-                    <>
-                      <button
-                        onClick={async () => {
-                          // Eliminar notificación al tocar la X (service notifications)
-                          const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
-                          if (!token) return;
-                          await fetch(`${API_BASE}/notificaciones_servicios/${n.id}`, {
-                            method: "DELETE",
-                            headers: {
-                              "Authorization": `Bearer ${token}`,
-                              "Content-Type": "application/json"
-                            }
-                          });
-                          setNotificaciones(notificaciones.filter(notif => notif.id !== n.id));
-                        }}
-                        className="bg-red-500 hover:bg-red-600 text-white rounded-full p-2 transition-colors"
-                        title="Eliminar"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="18"
-                          height="18"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => props.onMensaje && props.onMensaje(n.id)}
-                        className="bg-blue-500 hover:bg-blue-600 text-white rounded-full p-2 transition-colors"
-                        title="Enviar mensaje"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="18"
-                          height="18"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                        </svg>
-                      </button>
-                    </>
-                  ) : null}
                 </div>
               </div>
             ))}

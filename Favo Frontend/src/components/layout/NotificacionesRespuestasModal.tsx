@@ -41,7 +41,28 @@ const NotificacionCard: React.FC<CardProps> = ({ notif, onRefresh }) => {
         return;
       }
 
-      let url = `${API_BASE}/notificaciones_respuestas/${tipo}?id_pedido=${notif.id_pedido}`;
+      // Para aceptado y rechazado, solo marcar como visto y eliminar
+      if (tipo === 'aceptado' || tipo === 'rechazado') {
+        const res = await fetch(`${API_BASE}/notificaciones_respuestas/${notif.id}/visto`, {
+          method: "PUT",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        });
+
+        if (!res.ok) {
+          alert("Error al marcar como visto");
+          return;
+        }
+
+        alert(`Notificación marcada como leída`);
+        onRefresh();
+        return;
+      }
+
+      // Para contraoferta, responder
+      let url = `${API_BASE}/notificaciones_respuestas/${tipo}?id_notif_servicio=${notif.id}`;
 
       if (tipo === 'contraoferta') {
         if (!nuevoPrecio || parseFloat(nuevoPrecio) <= 0) {
@@ -66,13 +87,13 @@ const NotificacionCard: React.FC<CardProps> = ({ notif, onRefresh }) => {
         return;
       }
 
-      alert(`¡Respuesta enviada! (${tipo})`);
+      alert(`¡Contraoferta enviada!`);
       setShowContraoferta(false);
       setNuevoPrecio("");
       setComentario("");
       onRefresh();
     } catch (err) {
-      alert("Error al enviar respuesta");
+      alert("Error al procesar");
       console.error(err);
     } finally {
       setLoading(false);
@@ -181,6 +202,19 @@ const NotificacionCard: React.FC<CardProps> = ({ notif, onRefresh }) => {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {!puedeResponder && notif.tipo !== 'contraoferta' && (
+        <div className="border-t pt-3 space-y-2">
+          <div className="text-xs font-semibold text-gray-600">Marcar como leída</div>
+          <button
+            onClick={() => handleResponder(notif.tipo as any)}
+            disabled={loading}
+            className="w-full bg-green-500 hover:bg-green-600 text-white text-sm py-2 rounded transition disabled:opacity-50"
+          >
+            ✓ Aceptar
+          </button>
         </div>
       )}
 
