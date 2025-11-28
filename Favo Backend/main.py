@@ -261,11 +261,31 @@ class UbicacionCreate(BaseModel):
 async def create_ubicacion(ubicacion: UbicacionCreate, current_user: UserInDB = Depends(get_current_user)):
     """Crear una nueva ubicación para el usuario"""
     try:
-        data = ubicacion.dict(exclude_unset=True)
+        # Obtener el ID máximo actual
+        max_id_response = supabase.from_("Ubicacion").select("id_ubicacion").order("id_ubicacion", desc=True).limit(1).execute()
+        max_id = 0
+        if max_id_response.data and len(max_id_response.data) > 0:
+            max_id = max_id_response.data[0].get("id_ubicacion", 0) or 0
+        
+        # Crear nuevo ID
+        new_id = max_id + 1
+        
+        # Preparar datos con el nuevo ID
+        data = {k: v for k, v in ubicacion.dict().items() if v is not None}
+        data["id_ubicacion"] = new_id
+        
         response = supabase.from_("Ubicacion").insert(data).execute()
         if hasattr(response, 'error') and response.error:
             raise HTTPException(status_code=400, detail=str(response.error))
-        return response.data[0] if response.data else None
+        
+        result = response.data[0] if response.data else None
+        if not result:
+            raise HTTPException(status_code=500, detail="No se retornaron datos después de insertar")
+        
+        # Retornar con el ID que creamos
+        return {"id_ubicacion": new_id}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al crear ubicación: {str(e)}")
 
@@ -273,11 +293,19 @@ async def create_ubicacion(ubicacion: UbicacionCreate, current_user: UserInDB = 
 async def update_ubicacion(id: int, ubicacion: UbicacionCreate, current_user: UserInDB = Depends(get_current_user)):
     """Actualizar una ubicación existente"""
     try:
-        data = ubicacion.dict(exclude_unset=True)
+        # Excluir campos vacíos/null
+        data = {k: v for k, v in ubicacion.dict().items() if v is not None}
         response = supabase.from_("Ubicacion").update(data).eq("id_ubicacion", id).execute()
         if hasattr(response, 'error') and response.error:
             raise HTTPException(status_code=400, detail=str(response.error))
-        return response.data[0] if response.data else None
+        
+        result = response.data[0] if response.data else None
+        if not result:
+            raise HTTPException(status_code=500, detail="No se encontró la ubicación para actualizar")
+        
+        return result
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al actualizar ubicación: {str(e)}")
 

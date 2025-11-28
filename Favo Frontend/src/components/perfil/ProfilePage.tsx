@@ -391,7 +391,7 @@ export const ProfilePage = () => {
                   <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
                     <h3 className="text-lg font-bold text-gray-900 mb-4">Confirmar cambios</h3>
                     <p className="text-gray-600 mb-6">
-                      ¿Estás seguro de que deseas guardar estos cambios en tu perfil? Esta acción no se puede deshacer.
+                      ¿Estás seguro de que deseas guardar estos cambios en tu perfil?.
                     </p>
                     <div className="flex gap-3 justify-end">
                       <button 
@@ -415,13 +415,13 @@ export const ProfilePage = () => {
 
                             // Crear o actualizar ubicación si hay datos
                             if (provinceInput || barrioInput || calleInput || alturaInput || pisoInput) {
-                              const locationData = {
-                                provincia: provinceInput || null,
-                                barrio_zona: barrioInput || null,
-                                calle: calleInput || null,
-                                altura: alturaInput || null,
-                                piso: pisoInput ? parseInt(pisoInput) : null
-                              };
+                              // Solo incluir campos que tienen valor
+                              const locationData: any = {};
+                              if (provinceInput) locationData.provincia = provinceInput;
+                              if (barrioInput) locationData.barrio_zona = barrioInput;
+                              if (calleInput) locationData.calle = calleInput;
+                              if (alturaInput) locationData.altura = alturaInput;
+                              if (pisoInput) locationData.piso = parseInt(pisoInput);
 
                               let locationRes;
                               if (selectedLocationId) {
@@ -447,8 +447,9 @@ export const ProfilePage = () => {
                               }
 
                               if (locationRes.ok) {
-                                const locationData = await locationRes.json();
-                                newLocationId = locationData.id_ubicacion;
+                                const responseData = await locationRes.json();
+                                // Extraer el ID correctamente (puede venir como id_ubicacion o id)
+                                newLocationId = responseData.id_ubicacion || responseData.id;
                               } else {
                                 const errorData = await locationRes.json().catch(() => ({}));
                                 setSavingError(errorData.detail || 'Error al guardar la ubicación');
