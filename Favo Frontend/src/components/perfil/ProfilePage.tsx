@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ServiceHistory } from './ServiceHistory';
-import { StarIcon, MapPinIcon, CalendarIcon, CheckCircleIcon, MailIcon, MapIcon, AlertCircleIcon } from 'lucide-react';
+import { StarIcon, MapPinIcon, CalendarIcon, CheckCircleIcon, AlertCircleIcon, BriefcaseIcon, ShoppingBagIcon } from 'lucide-react';
 import { Spinner } from '../layout/spinner';
 
 const API_URL = 'https://favo-iy6h.onrender.com';
@@ -38,8 +37,10 @@ const normalizeUserData = async (currentUser: any) => {
 export const ProfilePage = () => {
   const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
-  const [providedServices, setProvidedServices] = useState<any[]>([]);
-  const [requestedServices, setRequestedServices] = useState<any[]>([]);
+  const [servicios, setServicios] = useState<any[]>([]);
+  const [pedidos, setPedidos] = useState<any[]>([]);
+  const [ratings, setRatings] = useState<any[]>([]);
+  const [ratingPromedio, setRatingPromedio] = useState({ promedio: 0, cantidad: 0 });
   const [editing, setEditing] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [nameInput, setNameInput] = useState('');
@@ -49,9 +50,7 @@ export const ProfilePage = () => {
   const [calleInput, setCalleInput] = useState('');
   const [alturaInput, setAlturaInput] = useState('');
   const [pisoInput, setPisoInput] = useState('');
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
-  const [locations, setLocations] = useState<any[]>([]);
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
   const [savingError, setSavingError] = useState('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -79,32 +78,14 @@ export const ProfilePage = () => {
         if (servRes && servRes.ok) {
           const servicios = await servRes.json();
           if (currentUser && Array.isArray(servicios)) {
-            const provided = servicios.filter((s: any) => s.id_usuario === currentUser.id_usuario).map((s: any) => ({
-              id: s.id_servicio,
-              service: s.titulo,
-              client: s.Usuario?.nombre || 'Desconocido',
-              date: s.created_at ? new Date(s.created_at).toLocaleDateString() : '—',
-              status: 'Publicado',
-              amount: s.precio ? `$${s.precio}` : '—',
-              rating: s.rating || undefined
-            }));
-            setProvidedServices(provided);
+            setServicios(servicios.filter((s: any) => s.id_usuario === currentUser.id_usuario));
           }
         }
 
         if (pedRes && (pedRes as Response).ok) {
           const pedidos = await (pedRes as Response).json();
           if (currentUser && Array.isArray(pedidos)) {
-            const requested = pedidos.filter((p: any) => p.id_usuario === currentUser.id_usuario).map((p: any) => ({
-              id: p.id_pedidos || p.id,
-              service: p.titulo || 'Pedido',
-              provider: p.Proveedor?.nombre || p.proveedor_nombre || 'Desconocido',
-              date: p.fecha ? new Date(p.fecha).toLocaleDateString() : (p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'),
-              status: p.estado || 'Pendiente',
-              amount: p.precio ? `$${p.precio}` : '—',
-              rating: p.rating || undefined
-            }));
-            setRequestedServices(requested);
+            setPedidos(pedidos.filter((p: any) => p.id_usuario === currentUser.id_usuario));
           }
         }
       }
@@ -142,6 +123,23 @@ export const ProfilePage = () => {
         if (currentUser) {
           currentUser = await normalizeUserData(currentUser);
           setUser(currentUser);
+
+          // Obtener ratings del usuario
+          try {
+            const ratingsRes = await fetch(`${API_URL}/ratings/usuario/${currentUser.id_usuario}`);
+            if (ratingsRes.ok) {
+              const ratingsData = await ratingsRes.json();
+              setRatings(Array.isArray(ratingsData) ? ratingsData : []);
+            }
+
+            const promRes = await fetch(`${API_URL}/ratings/promedio/${currentUser.id_usuario}`);
+            if (promRes.ok) {
+              const promData = await promRes.json();
+              setRatingPromedio(promData);
+            }
+          } catch (e) {
+            console.error('Error fetching ratings:', e);
+          }
         }
 
         // Fetch servicios and pedidos and map to our history components
@@ -154,16 +152,7 @@ export const ProfilePage = () => {
           const servicios = await servRes.json();
           // provided = services where id_usuario === current user's id
           if (currentUser && Array.isArray(servicios)) {
-            const provided = servicios.filter((s: any) => s.id_usuario === currentUser.id_usuario).map((s: any) => ({
-              id: s.id_servicio,
-              service: s.titulo,
-              client: s.Usuario?.nombre || 'Desconocido',
-              date: s.created_at ? new Date(s.created_at).toLocaleDateString() : '—',
-              status: 'Publicado',
-              amount: s.precio ? `$${s.precio}` : '—',
-              rating: s.rating || undefined
-            }));
-            setProvidedServices(provided);
+            setServicios(servicios.filter((s: any) => s.id_usuario === currentUser.id_usuario));
           }
         }
 
@@ -173,16 +162,7 @@ export const ProfilePage = () => {
         if (pedRes && (pedRes as Response).ok) {
           const pedidos = await (pedRes as Response).json();
           if (currentUser && Array.isArray(pedidos)) {
-            const requested = pedidos.filter((p: any) => p.id_usuario === currentUser.id_usuario).map((p: any) => ({
-              id: p.id_pedidos || p.id,
-              service: p.titulo || 'Pedido',
-              provider: p.Proveedor?.nombre || p.proveedor_nombre || 'Desconocido',
-              date: p.fecha ? new Date(p.fecha).toLocaleDateString() : (p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'),
-              status: p.estado || 'Pendiente',
-              amount: p.precio ? `$${p.precio}` : '—',
-              rating: p.rating || undefined
-            }));
-            setRequestedServices(requested);
+            setPedidos(pedidos.filter((p: any) => p.id_usuario === currentUser.id_usuario));
           }
         }
       } catch (error) {
@@ -193,62 +173,65 @@ export const ProfilePage = () => {
     };
 
     fetchData();
-    // preload ubicaciones list for the edit form (non-blocking)
-    (async () => {
-      try {
-        const res = await fetch(`${API_URL}/ubicaciones`);
-        if (res.ok) {
-          const data = await res.json();
-          setLocations(Array.isArray(data) ? data : []);
-        }
-      } catch (e) {
-        // ignore
-      }
-    })();
   }, []);
 
   return (
     <div className="container mx-auto px-4 py-6">
       {loading ? <Spinner /> : null}
+      
+      <>
+      {/* Encabezado del Perfil */}
       <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
         <div className="flex items-start gap-6">
-          {/* Mostrar foto: si hay foto_perfil_base64, mostrarla con el prefijo correcto */}
           <img src={
             user?.foto_perfil_base64 
               ? (user.foto_perfil_base64.startsWith('data:') 
                   ? user.foto_perfil_base64 
                   : `data:image/jpeg;base64,${user.foto_perfil_base64}`)
               : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.nombre || user?.mail || 'User')}&background=fff&color=1f2937`
-          } alt="Foto de perfil" className="w-32 h-32 rounded-full border-4 border-white shadow-md object-cover" />
+          } alt="Foto de perfil" className="w-40 h-40 rounded-full border-4 border-white shadow-md object-cover" />
+          
           <div className="flex-1">
-            <div className="flex justify-between items-start">
+            <div className="flex justify-between items-start mb-4">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">{user?.nombre || user?.mail || 'Usuario'}</h1>
-                {/* description */}
-                {user?.descripcion && <p className="text-sm text-gray-600 mt-1">{user.descripcion}</p>}
-                {/* Mostrar ubicación compuesta si está disponible */}
+                <h1 className="text-3xl font-bold text-gray-900">{user?.nombre || user?.mail || 'Usuario'}</h1>
+                
+                {/* Status de Verificación */}
+                <div className="flex items-center gap-2 mt-2">
+                  <CheckCircleIcon size={18} className={user?.verificado ? "text-green-500" : "text-gray-400"} />
+                  <span className={user?.verificado ? "text-green-600 text-sm font-medium" : "text-gray-600 text-sm"}>
+                    {user?.verificado ? 'Identidad verificada' : 'No verificado'}
+                  </span>
+                </div>
+
+                {/* Ubicación */}
                 {user?.Ubicacion ? (
-                  <div className="flex items-center gap-2 mt-1">
-                    <MapPinIcon size={16} className="text-gray-400" />
-                    <span className="text-gray-600">{`${user.Ubicacion.calle || ''}${user.Ubicacion.altura ? ' ' + user.Ubicacion.altura : ''}${user.Ubicacion.piso ? ', Piso ' + user.Ubicacion.piso : ''}${user.Ubicacion.barrio_zona ? ' - ' + user.Ubicacion.barrio_zona : ''}${user.Ubicacion.provincia ? ', ' + user.Ubicacion.provincia : ''}`.replace(/^, |^\s+/, '') || '—'}</span>
-                  </div>
-                ) : user?.id_ubicacion ? (
-                  <div className="flex items-center gap-2 mt-1">
-                    <MapPinIcon size={16} className="text-gray-400" />
-                    <span className="text-gray-600">Ubicación registrada (ID {user.id_ubicacion})</span>
+                  <div className="flex items-start gap-2 mt-3 text-gray-700">
+                    <MapPinIcon size={18} className="flex-shrink-0 mt-0.5" />
+                    <div className="text-sm">
+                      {user.Ubicacion.calle && <p>{user.Ubicacion.calle} {user.Ubicacion.altura}</p>}
+                      {user.Ubicacion.piso && <p>Piso {user.Ubicacion.piso}</p>}
+                      {user.Ubicacion.barrio_zona && <p>{user.Ubicacion.barrio_zona}</p>}
+                      {user.Ubicacion.provincia && <p>{user.Ubicacion.provincia}</p>}
+                    </div>
                   </div>
                 ) : null}
+
+                {/* Descripción */}
+                {user?.descripcion && (
+                  <p className="text-gray-600 mt-3 max-w-lg">{user.descripcion}</p>
+                )}
+
+                {/* Fecha de Registro */}
                 {user?.fecha_registro && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <CalendarIcon size={16} className="text-gray-400" />
-                    <span className="text-gray-600">Miembro desde {new Date(user.fecha_registro).toLocaleDateString()}</span>
+                  <div className="flex items-center gap-2 mt-3 text-gray-600 text-sm">
+                    <CalendarIcon size={16} />
+                    <span>Miembro desde {new Date(user.fecha_registro).toLocaleDateString('es-ES', { year: 'numeric', month: 'long' })}</span>
                   </div>
                 )}
-                <div className="flex items-center gap-2 mt-1">
-                  <CheckCircleIcon size={16} className="text-green-500" />
-                  <span className="text-green-600">{user?.verificado ? 'Identidad verificada' : 'No verificado'}</span>
-                </div>
               </div>
+
+              {/* Botón Editar */}
               <button onClick={() => {
                 setEditing(true);
                 setEmailInput(user?.mail || '');
@@ -262,10 +245,58 @@ export const ProfilePage = () => {
                   setAlturaInput(String(user.Ubicacion.altura || ''));
                   setPisoInput(String(user.Ubicacion.piso || ''));
                 }
-              }} className="bg-blue-800 text-white px-4 py-2 rounded-lg hover:bg-blue-900">Editar perfil</button>
+              }} className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-medium">
+                Editar perfil
+              </button>
             </div>
-            {/* Edit form/modal */}
-            <div>
+
+            {/* Rating Summary y Roles */}
+            <div className="mt-6 flex items-center gap-6 p-4 bg-gray-50 rounded-lg">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <StarIcon 
+                        key={star}
+                        size={20}
+                        className={`${
+                          star <= Math.round(ratingPromedio.promedio)
+                            ? 'text-yellow-400 fill-yellow-400'
+                            : 'text-gray-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="font-bold text-lg">{ratingPromedio.promedio.toFixed(1)}</span>
+                </div>
+                <span className="text-gray-600 text-sm">
+                  {ratingPromedio.cantidad === 0 ? 'Sin calificaciones' : `${ratingPromedio.cantidad} ${ratingPromedio.cantidad === 1 ? 'reseña' : 'reseñas'}`}
+                </span>
+              </div>
+
+              {/* Roles */}
+              <div className="flex gap-4">
+                {user?.esProvedor && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg">
+                    <BriefcaseIcon size={16} className="text-blue-600" />
+                    <span className="text-sm font-medium text-blue-600">Proveedor</span>
+                  </div>
+                )}
+                {user?.esDemanda && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg">
+                    <ShoppingBagIcon size={16} className="text-green-600" />
+                    <span className="text-sm font-medium text-green-600">Demandante</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Formulario de edición */}
+      {editing && (
+        <div>
               {editing && (
                 <div className="mt-6 bg-white border-2 border-blue-100 rounded-lg p-6">
                   <h3 className="text-xl font-bold text-gray-900 mb-6">Editar tu perfil</h3>
@@ -309,7 +340,6 @@ export const ProfilePage = () => {
                                 const result = reader.result as string;
                                 const base = result.split(',')[1] || result;
                                 setPhotoBase64(base);
-                                setPhotoPreview(result);
                               };
                               reader.readAsDataURL(file);
                             }}
@@ -554,40 +584,132 @@ export const ProfilePage = () => {
                   </div>
                 </div>
               )}
-            </div>
+        </div>
+      )}
 
-            <div className="mt-4">
-              <div className="flex items-center gap-1">
-                <StarIcon size={20} className="text-yellow-400 fill-current" />
-                <span className="text-lg font-semibold">{user?.rating ?? '—'}</span>
-                <span className="text-gray-500">({user?.review_count ?? 0} reseñas)</span>
-              </div>
-            </div>
+      {/* Estadísticas */}
+      {(servicios.length > 0 || pedidos.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-blue-600">
+            <div className="text-sm text-gray-600">Servicios brindados</div>
+            <div className="text-2xl font-bold text-blue-600">{servicios.length}</div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-green-600">
+            <div className="text-sm text-gray-600">Servicios solicitados</div>
+            <div className="text-2xl font-bold text-green-600">{pedidos.length}</div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-yellow-500">
+            <div className="text-sm text-gray-600">Reseñas recibidas</div>
+            <div className="text-2xl font-bold text-yellow-600">{ratingPromedio.cantidad}</div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Small live stats row derived from fetched data */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-6">
-        <div className="bg-white rounded-lg shadow-sm p-4 text-center">
-          <div className="text-sm text-gray-500">Servicios brindados</div>
-          <div className="text-2xl font-bold">{providedServices.length}</div>
+      {/* Servicios del Usuario */}
+      {servicios.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+            <BriefcaseIcon size={24} className="text-blue-600" />
+            Servicios brindados
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {servicios.map((servicio) => (
+              <div key={servicio.id_servicio} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
+                <h3 className="font-semibold text-gray-900 text-lg mb-2">{servicio.titulo}</h3>
+                {servicio.descripcion && (
+                  <p className="text-gray-600 text-sm mb-3 line-clamp-2">{servicio.descripcion}</p>
+                )}
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-bold text-blue-600">${servicio.precio}</span>
+                  <span className="text-xs text-gray-500">{new Date(servicio.created_at).toLocaleDateString()}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="bg-white rounded-lg shadow-sm p-4 text-center">
-          <div className="text-sm text-gray-500">Servicios solicitados</div>
-          <div className="text-2xl font-bold">{requestedServices.length}</div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm p-4 text-center">
-          <div className="text-sm text-gray-500">Reseñas</div>
-          <div className="text-2xl font-bold">{user?.review_count ?? 0}</div>
-        </div>
-      </div>
+      )}
 
+      {/* Pedidos del Usuario */}
+      {pedidos.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+            <ShoppingBagIcon size={24} className="text-green-600" />
+            Servicios solicitados
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {pedidos.map((pedido) => (
+              <div key={pedido.id_pedidos || pedido.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-semibold text-gray-900 text-lg">{pedido.titulo}</h3>
+                  {pedido.estado && (
+                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                      pedido.estado === 'completado' 
+                        ? 'bg-green-100 text-green-800'
+                        : pedido.estado === 'pendiente'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {pedido.estado}
+                    </span>
+                  )}
+                </div>
+                {pedido.descripcion && (
+                  <p className="text-gray-600 text-sm mb-3 line-clamp-2">{pedido.descripcion}</p>
+                )}
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-bold text-green-600">${pedido.precio}</span>
+                  <span className="text-xs text-gray-500">
+                    {new Date(pedido.fecha || pedido.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-      <div className="grid md:grid-cols-2 gap-6 mt-6">
-        <ServiceHistory title="Servicios brindados" type="provided" services={providedServices} />
-        <ServiceHistory title="Servicios solicitados" type="requested" services={requestedServices} />
+      {/* Reseñas */}
+      <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+          <StarIcon size={24} className="text-yellow-500" />
+          Reseñas ({ratingPromedio.cantidad})
+        </h2>
+        {ratings.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">Sin reseñas aún</p>
+        ) : (
+          <div className="space-y-4">
+            {ratings.map((rating) => (
+              <div key={rating.id} className="border-b border-gray-200 pb-4 last:border-0">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <p className="font-medium text-gray-900">{rating.Usuario?.nombre || 'Anónimo'}</p>
+                    <div className="flex gap-1 mt-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <StarIcon 
+                          key={star}
+                          size={14}
+                          className={`${
+                            star <= rating.score
+                              ? 'text-yellow-400 fill-yellow-400'
+                              : 'text-gray-300'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <span className="text-sm text-gray-500">
+                    {new Date(rating.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+                {rating.comment && (
+                  <p className="text-gray-700 text-sm mt-2 italic">{rating.comment}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+      </>
     </div>
   );
 };

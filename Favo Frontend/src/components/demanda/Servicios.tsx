@@ -3,6 +3,7 @@ import { TrendingColumn } from "./TrendingColumn";
 import { ContratarForm } from "./ContratarForm";
 import { NuevoServicioModal } from "./NuevoServicioModal";
 import { useSearchParams } from "react-router-dom";
+import { ServiceCard } from "../index/ServiceCard";
 
 const API_URL =  "https://favo-iy6h.onrender.com";
 
@@ -13,6 +14,7 @@ export const Servicios = () => {
     titulo: string;
     descripcion: string;
     id_usuario: number;
+    precio?: number;
     Usuario?: {
       nombre: string;
     };
@@ -90,25 +92,11 @@ export const Servicios = () => {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {servicios.map((servicio) => (
-                      <div key={servicio.id_servicio} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                        <h3 className="font-medium text-lg">{servicio.titulo}</h3>
-                        <p className="text-gray-600 text-sm mt-2">{servicio.descripcion}</p>
-                        {/* Aquí puedes agregar más detalles como ubicación, tiempo, pago, etc. */}
-                        <div className="flex justify-between items-center mt-4">
-                        <span className="text-xs text-gray-500">Publicado por: {servicio.Usuario?.nombre || "Desconocido"}</span>
-                          <div className="flex gap-2">
-                            <button className="bg-blue-900 text-white px-6 py-2 rounded hover:bg-blue-800 transition-colors">
-                              Contactar
-                            </button>
-                            <button
-                              className="bg-orange-500 text-white px-6 py-2 rounded hover:bg-orange-600 transition-colors"
-                              onClick={() => setModalContratar({ open: true, servicioId: servicio.id_servicio, destinatarioId: servicio.id_usuario })}
-                            >
-                              Contratar
-                            </button>
-                          </div>
-                        </div>
-                      </div>
+                      <ServiceCard 
+                        key={servicio.id_servicio} 
+                        provider={servicio}
+                        onContratar={() => setModalContratar({ open: true, servicioId: servicio.id_servicio, destinatarioId: servicio.id_usuario })}
+                      />
                     ))}
                   </div>
                 )}

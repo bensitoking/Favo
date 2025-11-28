@@ -21,12 +21,12 @@ export const RatingModal: React.FC<RatingModalProps> = ({ isOpen, onClose, onSub
     setError(null);
     try {
       await onSubmit(rating, comment);
+      // Solo cerrar y resetear si no hubo error
       setRating(5);
       setComment('');
       onClose();
     } catch (err: any) {
       setError(err.message || 'Error al enviar rating');
-    } finally {
       setSubmitting(false);
     }
   };

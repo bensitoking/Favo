@@ -10,10 +10,11 @@ type Professional = {
   id_usuario: number
   nombre: string
   descripcion: string
-  foto_perfil: string
-  verificado: boolean
+  foto_perfil?: string | null
+  verificado?: boolean
   rating: number
   cantidad_ratings: number
+  ubicacion?: string | null
 }
 
 export default function Home() {
@@ -90,13 +91,16 @@ export default function Home() {
                     <ServiceCard
                       key={professional.id_usuario}
                       provider={{
+                        id_servicio: professional.id_usuario,
+                        titulo: professional.nombre,
+                        descripcion: professional.descripcion || 'Profesional destacado',
+                        precio: undefined,
                         id_usuario: professional.id_usuario,
-                        name: professional.nombre,
                         rating: professional.rating,
-                        location: professional.ubicacion,
-                        image: professional.foto_perfil,
-                        description: professional.descripcion || 'Profesional destacado',
-                        skills: []
+                        cantidad_ratings: professional.cantidad_ratings,
+                        Usuario: {
+                          nombre: professional.nombre
+                        }
                       }}
                     />
                   ))}

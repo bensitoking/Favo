@@ -153,7 +153,6 @@ export const ContratarForm: React.FC<ContratarFormProps> = ({ open, onClose, onS
           <div>
             <label className="block font-semibold mb-1">Ubicación</label>
             <div className="flex items-center">
-              <span className="text-gray-400 mr-2">4cd</span>
               <input
                 className="w-full border rounded-lg px-4 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
                 placeholder="Ej: Palermo, Buenos Aires"

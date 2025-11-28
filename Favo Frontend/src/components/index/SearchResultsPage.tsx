@@ -85,13 +85,13 @@ export const SearchResultsPage = () => {
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-2">Resultados de búsqueda</h1>
       <p className="text-gray-600 mb-8">
-        {q ? `Resultados para "${q}"` : 'Por favor, ingresa un término de búsqueda'}
+        {q ? `Resultados para "${q}" (${usuarios.length + servicios.length} resultados)` : 'Por favor, ingresa un término de búsqueda'}
       </p>
 
       {/* Usuarios */}
       {usuarios.length > 0 && (
         <div className="mb-10">
-          <h2 className="text-2xl font-semibold mb-4">Profesionales</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-blue-600">👤 Profesionales ({usuarios.length})</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {usuarios.map((usuario) => (
               <ProfileCard 
@@ -107,7 +107,7 @@ export const SearchResultsPage = () => {
       {/* Servicios */}
       {servicios.length > 0 && (
         <div className="mb-10">
-          <h2 className="text-2xl font-semibold mb-4">Servicios</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-green-600">🔧 Servicios ({servicios.length})</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {servicios.map((servicio) => (
               <ServiceCard key={servicio.id_servicio} provider={servicio} />
@@ -119,6 +119,7 @@ export const SearchResultsPage = () => {
       {usuarios.length === 0 && servicios.length === 0 && q && (
         <div className="text-center py-12">
           <p className="text-gray-500 text-lg">No se encontraron resultados para "{q}"</p>
+          <p className="text-gray-400 text-sm mt-2">Intenta con otras palabras o profesionales</p>
         </div>
       )}
     </div>
