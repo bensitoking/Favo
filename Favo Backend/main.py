@@ -184,7 +184,12 @@ async def get_notificaciones_servicios(current_user: UserInDB = Depends(get_curr
 @app.post("/notificaciones_servicios", response_model=NotificacionServicio)
 async def create_notificacion_servicio(notificacion: NotificacionServicioBase, current_user: UserInDB = Depends(get_current_user)):
     try:
-        response = supabase.from_("notificaciones_servicios").insert(notificacion.dict()).execute()
+        data = notificacion.dict()
+        # Guardar automáticamente quien contrató (current_user) y cuándo
+        data["accepted_by"] = current_user.id_usuario
+        data["accepted_at"] = datetime.now().isoformat()
+        
+        response = supabase.from_("notificaciones_servicios").insert(data).execute()
         if hasattr(response, 'error') and response.error:
             raise HTTPException(status_code=400, detail=str(response.error))
         return response.data[0]
