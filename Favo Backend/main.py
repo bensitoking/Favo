@@ -331,14 +331,21 @@ async def update_users_me(update: UserUpdate, current_user: UserInDB = Depends(g
         if foto_str.startswith('data:'):
             # Remover el prefijo si existe
             foto_str = foto_str.split(',')[1] if ',' in foto_str else foto_str
+        # Guardar directamente el string base64
         update_data["foto_perfil"] = foto_str
+        print(f"DEBUG: Guardando foto de {len(foto_str)} caracteres")
 
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
 
-    response = supabase.from_("Usuario").update(update_data).eq("id_usuario", current_user.id_usuario).execute()
-    if hasattr(response, 'error') and response.error:
-        raise HTTPException(status_code=400, detail=str(response.error))
+    try:
+        response = supabase.from_("Usuario").update(update_data).eq("id_usuario", current_user.id_usuario).execute()
+        if hasattr(response, 'error') and response.error:
+            print(f"DEBUG: Error en update: {response.error}")
+            raise HTTPException(status_code=400, detail=str(response.error))
+    except Exception as e:
+        print(f"DEBUG: Exception en update: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
 
     user_row = supabase.from_("Usuario").select(
         "id_usuario,nombre,verificado,fecha_registro,esProvedor,esDemanda,id_ubicacion,foto_perfil,mail,descripcion"
@@ -349,7 +356,18 @@ async def update_users_me(update: UserUpdate, current_user: UserInDB = Depends(g
     
     # Normalizar la respuesta: asegurar que todos los campos están presentes
     result = user_row.data
-    result["foto_perfil"] = result.get("foto_perfil") or None
+    # La foto viene como bytea de Supabase, necesitamos convertirla a string si no lo es
+    foto = result.get("foto_perfil")
+    if foto and isinstance(foto, bytes):
+        # Si es bytes, convertir a base64 string
+        import base64
+        result["foto_perfil"] = base64.b64encode(foto).decode('utf-8')
+    elif foto and isinstance(foto, str):
+        # Si ya es string, dejarla así
+        result["foto_perfil"] = foto
+    else:
+        result["foto_perfil"] = None
+    
     result["descripcion"] = result.get("descripcion") or ""
     result["nombre"] = result.get("nombre") or "Usuario"
     
@@ -874,7 +892,19 @@ async def read_users_me(current_user: UserInDB = Depends(get_current_user)):
     
     # Normalizar la respuesta
     result = user_row.data
-    result["foto_perfil"] = result.get("foto_perfil") or None
+    # Manejar foto que puede venir como bytea o string
+    foto = result.get("foto_perfil")
+    if foto:
+        if isinstance(foto, bytes):
+            # Si es bytes de Supabase, convertir a base64
+            import base64
+            result["foto_perfil"] = base64.b64encode(foto).decode('utf-8')
+        elif isinstance(foto, str):
+            # Si ya es string, dejarlo así
+            result["foto_perfil"] = foto
+    else:
+        result["foto_perfil"] = None
+    
     result["descripcion"] = result.get("descripcion") or ""
     result["nombre"] = result.get("nombre") or "Usuario"
     

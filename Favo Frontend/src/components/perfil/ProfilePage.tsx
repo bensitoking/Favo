@@ -212,9 +212,13 @@ export const ProfilePage = () => {
       {loading ? <Spinner /> : null}
       <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
         <div className="flex items-start gap-6">
-          {/* If foto_perfil is provided as base64 or URL, use it. If foto_perfil is binary, backend needs to expose it as base64 or URL. */}
+          {/* Mostrar foto: si hay foto_perfil_base64, mostrarla con el prefijo correcto */}
           <img src={
-            user?.foto_perfil_url || (user?.foto_perfil_base64 ? `data:image/jpeg;base64,${user.foto_perfil_base64}` : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.nombre || user?.mail || 'User')}&background=fff&color=1f2937`)
+            user?.foto_perfil_base64 
+              ? (user.foto_perfil_base64.startsWith('data:') 
+                  ? user.foto_perfil_base64 
+                  : `data:image/jpeg;base64,${user.foto_perfil_base64}`)
+              : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.nombre || user?.mail || 'User')}&background=fff&color=1f2937`
           } alt="Foto de perfil" className="w-32 h-32 rounded-full border-4 border-white shadow-md object-cover" />
           <div className="flex-1">
             <div className="flex justify-between items-start">
@@ -283,9 +287,11 @@ export const ProfilePage = () => {
                             src={
                               photoBase64 
                                 ? `data:image/jpeg;base64,${photoBase64}`
-                                : user?.foto_perfil_url || user?.foto_perfil_base64 
-                                  ? (user?.foto_perfil_url || `data:image/jpeg;base64,${user?.foto_perfil_base64}`)
-                                  : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.nombre || 'User')}&background=fff&color=1f2937`
+                                : (user?.foto_perfil_base64 
+                                    ? (user.foto_perfil_base64.startsWith('data:') 
+                                        ? user.foto_perfil_base64 
+                                        : `data:image/jpeg;base64,${user.foto_perfil_base64}`)
+                                    : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.nombre || 'User')}&background=fff&color=1f2937`)
                             }
                             alt="Vista previa"
                             className="w-full h-full object-cover"
